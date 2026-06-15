@@ -1,0 +1,14 @@
+<svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+        <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#e8c96a"/>
+            <stop offset="100%" stop-color="#a07828"/>
+        </linearGradient>
+    </defs>
+    <!-- T vertical stroke -->
+    <polygon points="4,28 7,4 11,4 8,28" fill="url(#g)"/>
+    <!-- T crossbar -->
+    <rect x="-8" y="4" width="30" height="3" fill="url(#g)"/>
+    <!-- arrowhead -->
+    <polygon points="22,4 28,4 22,10" fill="#a07828"/>
+</svg>
