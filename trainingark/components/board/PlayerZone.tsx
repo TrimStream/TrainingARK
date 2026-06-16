@@ -226,15 +226,31 @@ export function PlayerZone({ player, position, revealAll }: PlayerZoneProps) {
 
     const strip = (
       <div className={`${styles.strip} ${isTop ? styles.stripTop : ''}`}>
-        <div className={styles.playerMeta}>
-          <span className={styles.playerName}>{player.name}</span>
-          <span className={styles.playerLife}>{player.life}</span>
-          {formatTax(player.commanderTax) && (
-            <span className={styles.playerTax}>{formatTax(player.commanderTax)}</span>
-          )}
-        </div>
-        <div className={styles.stripDivider} />
+        {isRight && (
+          <>
+            <div className={styles.playerMeta}>
+              <span className={styles.playerName}>{player.name}</span>
+              <span className={styles.playerLife}>{player.life}</span>
+              {formatTax(player.commanderTax) && (
+                <span className={styles.playerTax}>{formatTax(player.commanderTax)}</span>
+              )}
+            </div>
+            <div className={styles.stripDivider} />
+          </>
+        )}
         {isRight ? rightSideZones : leftSideZones}
+        {!isRight && (
+          <>
+            <div className={styles.stripDivider} />
+            <div className={styles.playerMeta}>
+              <span className={styles.playerName}>{player.name}</span>
+              <span className={styles.playerLife}>{player.life}</span>
+              {formatTax(player.commanderTax) && (
+                <span className={styles.playerTax}>{formatTax(player.commanderTax)}</span>
+              )}
+            </div>
+          </>
+        )}
       </div>
     )
 

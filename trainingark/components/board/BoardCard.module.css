@@ -1,0 +1,51 @@
+.card {
+  position: relative;
+  display: inline-block;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+
+.card:hover {
+  z-index: 5;
+}
+
+.tapped {
+  transform: rotate(90deg);
+  margin: 0 20px;
+}
+
+.dotsBtn {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  background: rgba(0, 0, 0, 0.75);
+  border: none;
+  border-radius: 3px;
+  color: rgba(232, 224, 212, 0.9);
+  cursor: pointer;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  line-height: 1;
+  padding: 0;
+}
+
+.dotsBtn:hover {
+  background: rgba(0, 0, 0, 0.95);
+  color: #c9a84c;
+}
+
+.preview {
+  position: fixed;
+  bottom: 16px;
+  right: 16px;
+  z-index: 9998;
+  pointer-events: none;
+  border-radius: 8px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.7);
+}

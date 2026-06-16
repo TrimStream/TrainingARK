@@ -1,0 +1,58 @@
+.menu {
+  position: fixed;
+  z-index: 9999;
+  background: #1a1a24;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  min-width: 200px;
+  padding: 4px 0;
+  font-size: 0.78rem;
+}
+
+.menuHeader {
+  padding: 6px 12px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: rgba(232, 224, 212, 0.5);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.menuDivider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.07);
+  margin: 3px 0;
+}
+
+.menuItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 6px 12px;
+  background: none;
+  border: none;
+  color: rgba(232, 224, 212, 0.85);
+  cursor: pointer;
+  font-size: 0.78rem;
+  text-align: left;
+  transition: background 0.1s;
+  gap: 8px;
+}
+
+.menuItem:hover {
+  background: rgba(255, 255, 255, 0.07);
+  color: #e8e0d4;
+}
+
+kbd {
+  font-size: 0.62rem;
+  color: rgba(232, 224, 212, 0.35);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  padding: 1px 5px;
+  flex-shrink: 0;
+}

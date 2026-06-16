@@ -72,22 +72,23 @@
 }
 
 .playerName {
-  font-size: 0.68rem;
-  font-weight: 600;
+  font-size: 0.65rem;
+  font-weight: 400;
   color: rgba(232, 224, 212, 0.85);
   white-space: nowrap;
 }
 
 .playerLife {
-  font-size: 1.5rem;
-  font-weight: 700;
+  font-size: 1.3rem;
+  font-weight: 400;
   color: #e8e0d4;
   line-height: 1;
 }
 
 .playerTax {
-  font-size: 0.58rem;
-  color: rgba(232, 224, 212, 0.4);
+  font-size: 0.56rem;
+  font-weight: 400;
+  color: rgba(232, 224, 212, 0.35);
   margin-top: 2px;
 }
 
@@ -103,11 +104,10 @@
 }
 
 .zoneLabel {
-  font-size: 0.6rem;
-  font-weight: 600;
-  color: rgba(232, 224, 212, 0.45);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  font-size: 0.62rem;
+  font-weight: 400;
+  color: rgba(232, 224, 212, 0.5);
+  letter-spacing: 0.01em;
   margin-bottom: 4px;
   white-space: nowrap;
   user-select: none;
