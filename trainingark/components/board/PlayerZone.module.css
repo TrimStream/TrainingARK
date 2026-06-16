@@ -1,0 +1,180 @@
+.playmat {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: #0f0f13;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 8px;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.battlefield {
+  flex: 1;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  overflow: auto;
+  min-height: 0;
+}
+
+.section {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 40px;
+  align-content: flex-start;
+}
+
+.watermark {
+  object-fit: contain;
+  opacity: 0.06;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Zone strip */
+.strip {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0;
+  background: #111118;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+  padding: 6px 0;
+  width: 100%;
+}
+
+.stripTop {
+  border-top: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  order: -1;
+}
+
+.stripDivider {
+  width: 1px;
+  height: 80px;
+  background: rgba(255, 255, 255, 0.07);
+  flex-shrink: 0;
+}
+
+/* Player meta block */
+.playerMeta {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 12px;
+  flex-shrink: 0;
+  min-width: 80px;
+}
+
+.playerName {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: rgba(232, 224, 212, 0.85);
+  white-space: nowrap;
+}
+
+.playerLife {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #e8e0d4;
+  line-height: 1;
+}
+
+.playerTax {
+  font-size: 0.58rem;
+  color: rgba(232, 224, 212, 0.4);
+  margin-top: 2px;
+}
+
+/* Zone sections */
+.zoneSection {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 0 10px;
+  flex-shrink: 0;
+  cursor: pointer;
+  min-width: 80px;
+}
+
+.zoneLabel {
+  font-size: 0.6rem;
+  font-weight: 600;
+  color: rgba(232, 224, 212, 0.45);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.emptyPile {
+  border: 1px dashed rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+/* Hand fan */
+.handFan {
+  position: relative;
+  height: 84px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.fanCard {
+  position: absolute;
+  top: 0;
+  transition: transform 0.1s;
+}
+
+.fanCard:hover {
+  transform: translateY(-6px);
+  z-index: 10;
+}
+
+/* Expanded panel */
+.expandedPanel {
+  background: #13131a;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  padding: 8px 12px;
+  flex-shrink: 0;
+}
+
+.expandedLabel {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: rgba(232, 224, 212, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.closeExpanded {
+  background: none;
+  border: none;
+  color: rgba(232, 224, 212, 0.4);
+  cursor: pointer;
+  font-size: 0.75rem;
+  padding: 0 4px;
+}
+
+.closeExpanded:hover {
+  color: rgba(232, 224, 212, 0.8);
+}
+
+.expandedCards {
+  display: flex;
+  flex-direction: row;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
