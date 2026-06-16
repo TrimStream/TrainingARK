@@ -18,8 +18,17 @@ const testPlayers: [Player, Player, Player, Player] = [
     commanderTax: 0,
     zones: {
       ...emptyZones,
+      battlefield: {
+        cards: [{
+          id: '63cda4a0-0dff-4edb-ae67-a2b7e2971350',
+          name: 'Kinnan, Bonder Prodigy',
+          cardType: 'creature' as const,
+          imageUrl: 'https://cards.scryfall.io/normal/front/6/3/63cda4a0-0dff-4edb-ae67-a2b7e2971350.jpg'
+        }],
+        revealed: true,
+      },
       command: {
-        cards: [{ id: 'cmd1', name: 'Kinnan, Bonder Prodigy', cardType: 'creature' }],
+        cards: [{ id: 'cmd1', name: 'Kinnan, Bonder Prodigy', cardType: 'creature' as const }],
         revealed: true,
       },
     },
@@ -33,7 +42,7 @@ const testPlayers: [Player, Player, Player, Player] = [
       ...emptyZones,
       hand: { cards: [], revealed: false, cardCount: 4 },
       command: {
-        cards: [{ id: 'cmd2', name: 'Thrasios, Triton Hero', cardType: 'creature' }],
+        cards: [{ id: 'cmd2', name: 'Thrasios, Triton Hero', cardType: 'creature' as const }],
         revealed: true,
       },
     },
@@ -47,7 +56,7 @@ const testPlayers: [Player, Player, Player, Player] = [
       ...emptyZones,
       hand: { cards: [], revealed: false, cardCount: 3 },
       command: {
-        cards: [{ id: 'cmd3', name: 'Atraxa, Grand Unifier', cardType: 'creature' }],
+        cards: [{ id: 'cmd3', name: 'Atraxa, Grand Unifier', cardType: 'creature' as const }],
         revealed: true,
       },
     },
@@ -61,7 +70,7 @@ const testPlayers: [Player, Player, Player, Player] = [
       ...emptyZones,
       hand: { cards: [], revealed: false, cardCount: 6 },
       command: {
-        cards: [{ id: 'cmd4', name: 'Kenrith, the Returned King', cardType: 'creature' }],
+        cards: [{ id: 'cmd4', name: 'Kenrith, the Returned King', cardType: 'creature' as const }],
         revealed: true,
       },
     },

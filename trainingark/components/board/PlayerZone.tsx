@@ -4,17 +4,21 @@ import { useState } from 'react'
 import Image from 'next/image'
 import type { Player, PlayerPosition, Card } from '@/types/board'
 import styles from './PlayerZone.module.css'
+import { BoardCard } from './BoardCard'
+import type { ZoneTarget, StackType } from './CardContextMenu'
 
 interface PlayerZoneProps {
   player: Player
   position: PlayerPosition
   revealAll?: boolean
+  onMove?: (cardId: string, target: ZoneTarget) => void
+  onCastToStack?: (cardId: string, type: StackType) => void
 }
 
 const CARD_BACK = '/back_magic.png'
 const CARD_W = 60
 const CARD_H = 84
-const HAND_OVERLAP = 28 // px each card shifts right
+const HAND_OVERLAP = 28
 
 type ExpandableZone = 'hand' | 'graveyard' | 'exile'
 
@@ -23,7 +27,7 @@ function formatTax(tax: Player['commanderTax']): string {
   return tax > 0 ? `Tax: ${tax}` : ''
 }
 
-export function PlayerZone({ player, position, revealAll }: PlayerZoneProps) {
+export function PlayerZone({ player, position, revealAll, onMove, onCastToStack }: PlayerZoneProps) {
   const [expanded, setExpanded] = useState<ExpandableZone | null>(null)
 
   const isTop = position === 'top-left' || position === 'top-right'
@@ -42,7 +46,6 @@ export function PlayerZone({ player, position, revealAll }: PlayerZoneProps) {
     return revealed && card.imageUrl ? card.imageUrl : CARD_BACK
   }
 
-  // Hand: overlapping fan of cards
   const handCount = zoneCount('hand')
   const handRevealed = revealAll || player.zones.hand.revealed
   const handCards = player.zones.hand.cards
@@ -59,11 +62,7 @@ export function PlayerZone({ player, position, revealAll }: PlayerZoneProps) {
       >
         {handRevealed && handCards.length > 0
           ? handCards.map((card, i) => (
-              <div
-                key={card.id}
-                className={styles.fanCard}
-                style={{ left: i * HAND_OVERLAP }}
-              >
+              <div key={card.id} className={styles.fanCard} style={{ left: i * HAND_OVERLAP }}>
                 <Image src={cardSrc(card, true)} alt={card.name} width={CARD_W} height={CARD_H} style={{ borderRadius: 4, display: 'block', width: CARD_W, height: CARD_H }} />
               </div>
             ))
@@ -79,9 +78,7 @@ export function PlayerZone({ player, position, revealAll }: PlayerZoneProps) {
 
   function renderPile(cards: Card[], count: number, revealed: boolean) {
     if (count === 0) {
-      return (
-        <div className={styles.emptyPile} style={{ width: CARD_W, height: CARD_H }} />
-      )
+      return <div className={styles.emptyPile} style={{ width: CARD_W, height: CARD_H }} />
     }
     const topCard = cards[cards.length - 1]
     return (
@@ -122,7 +119,11 @@ export function PlayerZone({ player, position, revealAll }: PlayerZoneProps) {
   const expandedPanel = expanded && (
     <div className={styles.expandedPanel}>
       <div className={styles.expandedLabel}>
-        {expanded === 'hand' ? `Hand (${handCount})` : expanded === 'graveyard' ? `Graveyard (${zoneCount('graveyard')})` : `Exile (${zoneCount('exile')})`}
+        {expanded === 'hand'
+          ? `Hand (${handCount})`
+          : expanded === 'graveyard'
+          ? `Graveyard (${zoneCount('graveyard')})`
+          : `Exile (${zoneCount('exile')})`}
         <button className={styles.closeExpanded} onClick={() => setExpanded(null)}>x</button>
       </div>
       <div className={styles.expandedCards}>
@@ -146,113 +147,96 @@ export function PlayerZone({ player, position, revealAll }: PlayerZoneProps) {
   )
 
   const rightSideZones = (
-      <>
-        {/* Hand takes remaining space */}
-        <div className={styles.zoneSection} style={{ flex: 1, minWidth: 0 }}>
-          <div className={styles.zoneLabel} onClick={() => toggle('hand')}>
-            Hand ({handCount}) {expanded === 'hand' ? '▲' : '▼'}
-          </div>
-          {renderHand()}
+    <>
+      <div className={styles.zoneSection} style={{ flex: 1, minWidth: 0 }}>
+        <div className={styles.zoneLabel} onClick={() => toggle('hand')}>
+          Hand ({handCount}) {expanded === 'hand' ? '▲' : '▼'}
         </div>
-
-        <div className={styles.stripDivider} />
-
-        <div className={styles.zoneSection}>
-          <div className={styles.zoneLabel}>Library ({zoneCount('library')})</div>
-          {renderPile([], zoneCount('library'), false)}
-        </div>
-
-        <div className={styles.stripDivider} />
-
-        <div className={styles.zoneSection} onClick={() => toggle('graveyard')}>
-          <div className={styles.zoneLabel}>Graveyard ({zoneCount('graveyard')}) {expanded === 'graveyard' ? '▲' : '▼'}</div>
-          {renderPile(player.zones.graveyard.cards, zoneCount('graveyard'), true)}
-        </div>
-
-        <div className={styles.stripDivider} />
-
-        <div className={styles.zoneSection} onClick={() => toggle('exile')}>
-          <div className={styles.zoneLabel}>Exile ({zoneCount('exile')}) {expanded === 'exile' ? '▲' : '▼'}</div>
-          {renderPile(player.zones.exile.cards, zoneCount('exile'), true)}
-        </div>
-
-        <div className={styles.stripDivider} />
-
-        <div className={styles.zoneSection}>
-          <div className={styles.zoneLabel}>Command</div>
-          {renderCommandZone()}
-        </div>
-      </>
-    )
-
-    const leftSideZones = (
-      <>
-        <div className={styles.zoneSection}>
-          <div className={styles.zoneLabel}>Command</div>
-          {renderCommandZone()}
-        </div>
-
-        <div className={styles.stripDivider} />
-
-        <div className={styles.zoneSection} onClick={() => toggle('exile')}>
-          <div className={styles.zoneLabel}>Exile ({zoneCount('exile')}) {expanded === 'exile' ? '▲' : '▼'}</div>
-          {renderPile(player.zones.exile.cards, zoneCount('exile'), true)}
-        </div>
-
-        <div className={styles.stripDivider} />
-
-        <div className={styles.zoneSection} onClick={() => toggle('graveyard')}>
-          <div className={styles.zoneLabel}>Graveyard ({zoneCount('graveyard')}) {expanded === 'graveyard' ? '▲' : '▼'}</div>
-          {renderPile(player.zones.graveyard.cards, zoneCount('graveyard'), true)}
-        </div>
-
-        <div className={styles.stripDivider} />
-
-        <div className={styles.zoneSection}>
-          <div className={styles.zoneLabel}>Library ({zoneCount('library')})</div>
-          {renderPile([], zoneCount('library'), false)}
-        </div>
-
-        <div className={styles.stripDivider} />
-
-        <div className={styles.zoneSection} style={{ flex: 1, minWidth: 0 }}>
-          <div className={styles.zoneLabel} onClick={() => toggle('hand')}>
-            Hand ({handCount}) {expanded === 'hand' ? '▲' : '▼'}
-          </div>
-          {renderHand()}
-        </div>
-      </>
-    )
-
-    const strip = (
-      <div className={`${styles.strip} ${isTop ? styles.stripTop : ''}`}>
-        {isRight && (
-          <>
-            <div className={styles.playerMeta}>
-              <span className={styles.playerName}>{player.name}</span>
-              <span className={styles.playerLife}>{player.life}</span>
-              {formatTax(player.commanderTax) && (
-                <span className={styles.playerTax}>{formatTax(player.commanderTax)}</span>
-              )}
-            </div>
-            <div className={styles.stripDivider} />
-          </>
-        )}
-        {isRight ? rightSideZones : leftSideZones}
-        {!isRight && (
-          <>
-            <div className={styles.stripDivider} />
-            <div className={styles.playerMeta}>
-              <span className={styles.playerName}>{player.name}</span>
-              <span className={styles.playerLife}>{player.life}</span>
-              {formatTax(player.commanderTax) && (
-                <span className={styles.playerTax}>{formatTax(player.commanderTax)}</span>
-              )}
-            </div>
-          </>
-        )}
+        {renderHand()}
       </div>
-    )
+      <div className={styles.stripDivider} />
+      <div className={styles.zoneSection}>
+        <div className={styles.zoneLabel}>Library ({zoneCount('library')})</div>
+        {renderPile([], zoneCount('library'), false)}
+      </div>
+      <div className={styles.stripDivider} />
+      <div className={styles.zoneSection} onClick={() => toggle('graveyard')}>
+        <div className={styles.zoneLabel}>Graveyard ({zoneCount('graveyard')}) {expanded === 'graveyard' ? '▲' : '▼'}</div>
+        {renderPile(player.zones.graveyard.cards, zoneCount('graveyard'), true)}
+      </div>
+      <div className={styles.stripDivider} />
+      <div className={styles.zoneSection} onClick={() => toggle('exile')}>
+        <div className={styles.zoneLabel}>Exile ({zoneCount('exile')}) {expanded === 'exile' ? '▲' : '▼'}</div>
+        {renderPile(player.zones.exile.cards, zoneCount('exile'), true)}
+      </div>
+      <div className={styles.stripDivider} />
+      <div className={styles.zoneSection}>
+        <div className={styles.zoneLabel}>Command</div>
+        {renderCommandZone()}
+      </div>
+    </>
+  )
+
+  const leftSideZones = (
+    <>
+      <div className={styles.zoneSection}>
+        <div className={styles.zoneLabel}>Command</div>
+        {renderCommandZone()}
+      </div>
+      <div className={styles.stripDivider} />
+      <div className={styles.zoneSection} onClick={() => toggle('exile')}>
+        <div className={styles.zoneLabel}>Exile ({zoneCount('exile')}) {expanded === 'exile' ? '▲' : '▼'}</div>
+        {renderPile(player.zones.exile.cards, zoneCount('exile'), true)}
+      </div>
+      <div className={styles.stripDivider} />
+      <div className={styles.zoneSection} onClick={() => toggle('graveyard')}>
+        <div className={styles.zoneLabel}>Graveyard ({zoneCount('graveyard')}) {expanded === 'graveyard' ? '▲' : '▼'}</div>
+        {renderPile(player.zones.graveyard.cards, zoneCount('graveyard'), true)}
+      </div>
+      <div className={styles.stripDivider} />
+      <div className={styles.zoneSection}>
+        <div className={styles.zoneLabel}>Library ({zoneCount('library')})</div>
+        {renderPile([], zoneCount('library'), false)}
+      </div>
+      <div className={styles.stripDivider} />
+      <div className={styles.zoneSection} style={{ flex: 1, minWidth: 0 }}>
+        <div className={styles.zoneLabel} onClick={() => toggle('hand')}>
+          Hand ({handCount}) {expanded === 'hand' ? '▲' : '▼'}
+        </div>
+        {renderHand()}
+      </div>
+    </>
+  )
+
+  const strip = (
+    <div className={`${styles.strip} ${isTop ? styles.stripTop : ''}`}>
+      {isRight && (
+        <>
+          <div className={styles.playerMeta}>
+            <span className={styles.playerName}>{player.name}</span>
+            <span className={styles.playerLife}>{player.life}</span>
+            {formatTax(player.commanderTax) && (
+              <span className={styles.playerTax}>{formatTax(player.commanderTax)}</span>
+            )}
+          </div>
+          <div className={styles.stripDivider} />
+        </>
+      )}
+      {isRight ? rightSideZones : leftSideZones}
+      {!isRight && (
+        <>
+          <div className={styles.stripDivider} />
+          <div className={styles.playerMeta}>
+            <span className={styles.playerName}>{player.name}</span>
+            <span className={styles.playerLife}>{player.life}</span>
+            {formatTax(player.commanderTax) && (
+              <span className={styles.playerTax}>{formatTax(player.commanderTax)}</span>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  )
 
   const battlefield = player.zones.battlefield.cards
   const creatures = battlefield.filter(c => c.cardType === 'creature')
@@ -264,17 +248,32 @@ export function PlayerZone({ player, position, revealAll }: PlayerZoneProps) {
   const sections = [
     <div key="creatures" className={styles.section}>
       {creatures.map(card => (
-        <Image key={card.id} src={cardSrc(card, true)} alt={card.name} width={CARD_W} height={CARD_H} style={{ borderRadius: 4, width: CARD_W, height: CARD_H }} />
+        <BoardCard
+          key={card.id}
+          card={card}
+          onMove={target => onMove?.(card.id, target)}
+          onCastToStack={type => onCastToStack?.(card.id, type)}
+        />
       ))}
     </div>,
     <div key="nonlands" className={styles.section}>
       {nonlands.map(card => (
-        <Image key={card.id} src={cardSrc(card, true)} alt={card.name} width={CARD_W} height={CARD_H} style={{ borderRadius: 4, width: CARD_W, height: CARD_H }} />
+        <BoardCard
+          key={card.id}
+          card={card}
+          onMove={target => onMove?.(card.id, target)}
+          onCastToStack={type => onCastToStack?.(card.id, type)}
+        />
       ))}
     </div>,
     <div key="lands" className={styles.section}>
       {lands.map(card => (
-        <Image key={card.id} src={cardSrc(card, true)} alt={card.name} width={CARD_W} height={CARD_H} style={{ borderRadius: 4, width: CARD_W, height: CARD_H }} />
+        <BoardCard
+          key={card.id}
+          card={card}
+          onMove={target => onMove?.(card.id, target)}
+          onCastToStack={type => onCastToStack?.(card.id, type)}
+        />
       ))}
     </div>,
   ]
