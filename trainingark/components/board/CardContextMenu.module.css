@@ -47,7 +47,7 @@
   color: #e8e0d4;
 }
 
-kbd {
+.kbd {
   font-size: 0.62rem;
   color: rgba(232, 224, 212, 0.35);
   background: rgba(255, 255, 255, 0.06);

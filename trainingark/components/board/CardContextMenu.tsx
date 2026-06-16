@@ -58,19 +58,19 @@ export function CardContextMenu({ x, y, cardName, onMove, onCastToStack, onClose
       <div className={styles.menuHeader}>{cardName}</div>
       <div className={styles.menuDivider} />
       <button className={styles.menuItem} onClick={() => { onMove('battlefield'); onClose() }}>
-        Move to Battlefield <kbd>B</kbd>
+        Move to Battlefield <span className={styles.kbd}>B</span>
       </button>
       <button className={styles.menuItem} onClick={() => { onMove('hand'); onClose() }}>
-        Move to Hand <kbd>H</kbd>
+        Move to Hand <span className={styles.kbd}>H</span>
       </button>
       <button className={styles.menuItem} onClick={() => { onMove('graveyard'); onClose() }}>
-        Move to Graveyard <kbd>G</kbd>
+        Move to Graveyard <span className={styles.kbd}>G</span>
       </button>
       <button className={styles.menuItem} onClick={() => { onMove('exile'); onClose() }}>
-        Move to Exile <kbd>E</kbd>
+        Move to Exile <span className={styles.kbd}>E</span>
       </button>
       <button className={styles.menuItem} onClick={() => { onMove('library-top'); onClose() }}>
-        Move to Top of Library <kbd>L</kbd>
+        Move to Top of Library <span className={styles.kbd}>L</span>
       </button>
       <button className={styles.menuItem} onClick={() => { onMove('library-bottom'); onClose() }}>
         Move to Bottom of Library
