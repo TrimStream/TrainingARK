@@ -283,7 +283,9 @@ export function PlayerZone({ player, position, revealAll, onMove, onCastToStack 
       {isTop && expandedPanel}
       {isTop && strip}
       <div className={styles.battlefield}>
-        <Image src="/tark-dark.png" alt="" fill className={styles.watermark} />
+        <div className={styles.watermarkWrap}>
+		  <Image src="/tark-dark.png" alt="" fill style={{ objectFit: 'contain' }} />
+		</div>
         {isTop ? [...sections].reverse() : sections}
       </div>
       {!isTop && strip}
