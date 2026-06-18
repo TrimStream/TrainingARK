@@ -27,7 +27,7 @@ function formatTax(tax: Player['commanderTax']): string {
 	return `Tax: ${tax}`
 }
 
-const PLAYER_NAMES = ['You', 'Opponent 1', 'Opponent 2', 'Opponent 3']
+const PLAYER_NAMES = ['Player', 'Opponent 1', 'Opponent 2', 'Opponent 3']
 
 const ZONE_TARGET_MAP: Record<ZoneTarget, EditableZone> = {
 	battlefield: 'battlefield',
@@ -194,7 +194,7 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
 	}
 
 	function renderCommandZone() {
-		const cards = player.zones.command.cards
+		const cards = (player as Player).zones.command.cards
 		if (cards.length === 0) {
 			return <div className={styles.emptyPile} style={{ width: CARD_W, height: CARD_H }} />
 		}
@@ -384,17 +384,17 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
 	const sections = [
 		<div key="creatures" className={styles.section}>
 			{creatures.map((card: Card) => (
-				<BoardCard key={card.id} card={card} onMove={t => handleMove(card.id, t)} onCastToStack={t => handleCastToStack(card.id, t)} />
+				<BoardCard key={card.id} card={card} onMove={t => handleMove(card.id, t)} onCastToStack={t => handleCastToStack(card.id, t)} currentZone="battlefield" />
 			))}
 		</div>,
 		<div key="nonlands" className={styles.section}>
 			{nonlands.map((card: Card) => (
-				<BoardCard key={card.id} card={card} onMove={t => handleMove(card.id, t)} onCastToStack={t => handleCastToStack(card.id, t)} />
+				<BoardCard key={card.id} card={card} onMove={t => handleMove(card.id, t)} onCastToStack={t => handleCastToStack(card.id, t)} currentZone="battlefield" />
 			))}
 		</div>,
 		<div key="lands" className={styles.section}>
 			{lands.map((card: Card) => (
-				<BoardCard key={card.id} card={card} onMove={t => handleMove(card.id, t)} onCastToStack={t => handleCastToStack(card.id, t)} />
+				<BoardCard key={card.id} card={card} onMove={t => handleMove(card.id, t)} onCastToStack={t => handleCastToStack(card.id, t)} currentZone="battlefield" />
 			))}
 		</div>,
 	]
@@ -411,8 +411,8 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
 					onConfirm={handleSetupConfirm}
 				/>
 			)}
-			{isTop && expandedPanel}
 			{isTop && strip}
+			{isTop && expandedPanel}
 			<div className={styles.battlefield}>
 				<div className={styles.watermarkWrap}>
 					<Image src="/tark-dark.png" alt="" fill style={{ objectFit: 'contain' }} />
@@ -431,8 +431,8 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
 					+ Add card
 				</button>
 			</div>
-			{!isTop && strip}
 			{!isTop && expandedPanel}
+			{!isTop && strip}
 
 			{/* Card search popover for adding cards */}
 			{showCardSearch && cardSearchRect && (
@@ -503,24 +503,32 @@ function CardAddSearch({ decklist, onSelect, onClose }: {
 	}
 
 	return (
-		<div className={styles.cardAddSearch}>
-			<input
-				className={styles.cardAddInput}
-				placeholder={decklist.length > 0 ? 'Search decklist...' : 'Search all cards...'}
-				value={query}
-				onChange={e => setQuery(e.target.value)}
-				onKeyDown={e => {
-					if (e.key === 'Escape') { onClose(); return }
-					if (e.key === 'ArrowDown') { e.preventDefault(); setActiveIndex(i => Math.min(i + 1, suggestions.length - 1)) }
-					if (e.key === 'ArrowUp') { e.preventDefault(); setActiveIndex(i => Math.max(i - 1, -1)) }
-					if (e.key === 'Enter') {
-						const name = activeIndex >= 0 ? suggestions[activeIndex] : suggestions[0]
-						if (name) selectCard(name)
-					}
-				}}
-				autoFocus
-				autoComplete="off"
-			/>
+					<div className={styles.cardAddSearch}>
+							<div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}>
+								<input
+									className={styles.cardAddInput}
+									placeholder={decklist.length > 0 ? 'Search decklist...' : 'Search all cards...'}
+									value={query}
+									onChange={e => setQuery(e.target.value)}
+									onKeyDown={e => {
+										if (e.key === 'Escape') { onClose(); return }
+										if (e.key === 'ArrowDown') { e.preventDefault(); setActiveIndex(i => Math.min(i + 1, suggestions.length - 1)) }
+										if (e.key === 'ArrowUp') { e.preventDefault(); setActiveIndex(i => Math.max(i - 1, -1)) }
+										if (e.key === 'Enter') {
+											const name = activeIndex >= 0 ? suggestions[activeIndex] : suggestions[0]
+											if (name) selectCard(name)
+										}
+									}}
+									autoFocus
+									autoComplete="off"
+								/>
+								<button
+									onClick={onClose}
+									style={{ background: 'none', border: 'none', color: 'rgba(232,224,212,0.4)', cursor: 'pointer', fontSize: '1rem', padding: '0 4px', flexShrink: 0 }}
+								>
+									×
+								</button>
+							</div>
 			{loading && <div className={styles.cardAddHint}>Searching...</div>}
 			{!loading && query.length >= 2 && suggestions.length === 0 && (
 				<div className={styles.cardAddHint}>No results</div>

@@ -11,8 +11,10 @@ interface BoardCardProps {
   card: Card
   onMove: (target: ZoneTarget) => void
   onCastToStack: (type: StackType) => void
+  onToggleTapped: () => void
   isHovered?: boolean
   onHoverChange?: (hovered: boolean) => void
+  currentZone: EditableZone
 }
 
 const CARD_BACK = '/back_magic.png'
@@ -105,6 +107,7 @@ export function BoardCard({ card, onMove, onCastToStack }: BoardCardProps) {
           onMove={onMove}
           onCastToStack={onCastToStack}
           onClose={() => setContextMenu(null)}
+          currentZone={currentZone}
         />
       )}
     </>

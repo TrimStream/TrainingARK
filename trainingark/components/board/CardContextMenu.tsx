@@ -20,10 +20,12 @@ interface CardContextMenuProps {
   cardName: string
   onMove: (target: ZoneTarget) => void
   onCastToStack: (type: StackType) => void
+  onToggleTapped: () => void
   onClose: () => void
+  currentZone: EditableZone
 }
 
-export function CardContextMenu({ x, y, cardName, onMove, onCastToStack, onClose }: CardContextMenuProps) {
+export function CardContextMenu({ x, y, cardName, onMove, onCastToStack, onClose, currentZone }: CardContextMenuProps) {
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -49,6 +51,19 @@ export function CardContextMenu({ x, y, cardName, onMove, onCastToStack, onClose
   const adjustedX = x + menuWidth > window.innerWidth ? x - menuWidth : x
   const adjustedY = y + menuHeight > window.innerHeight ? y - menuHeight : y
 
+  // Helper to map ZoneTarget to EditableZone for comparison
+  const getTargetZone = (target: ZoneTarget): EditableZone => {
+    if (target === 'library-top' || target === 'library-bottom') return 'library'
+    return target
+  }
+
+  // Disabled states for move options
+  const isMoveToBattlegroundDisabled = getTargetZone('battlefield') === currentZone
+  const isMoveToHandDisabled = getTargetZone('hand') === currentZone
+  const isMoveToGraveyardDisabled = getTargetZone('graveyard') === currentZone
+  const isMoveToExileDisabled = getTargetZone('exile') === currentZone
+  const isMoveToLibraryDisabled = getTargetZone('library-top') === currentZone // same for bottom
+
   const menu = (
     <div
       ref={ref}
@@ -57,22 +72,46 @@ export function CardContextMenu({ x, y, cardName, onMove, onCastToStack, onClose
     >
       <div className={styles.menuHeader}>{cardName}</div>
       <div className={styles.menuDivider} />
-      <button className={styles.menuItem} onClick={() => { onMove('battlefield'); onClose() }}>
+      <button
+        className={styles.menuItem}
+        disabled={isMoveToBattlegroundDisabled}
+        onClick={() => { onMove('battlefield'); onClose() }}
+      >
         Move to Battlefield <span className={styles.kbd}>B</span>
       </button>
-      <button className={styles.menuItem} onClick={() => { onMove('hand'); onClose() }}>
+      <button
+        className={styles.menuItem}
+        disabled={isMoveToHandDisabled}
+        onClick={() => { onMove('hand'); onClose() }}
+      >
         Move to Hand <span className={styles.kbd}>H</span>
       </button>
-      <button className={styles.menuItem} onClick={() => { onMove('graveyard'); onClose() }}>
+      <button
+        className={styles.menuItem}
+        disabled={isMoveToGraveyardDisabled}
+        onClick={() => { onMove('graveyard'); onClose() }}
+      >
         Move to Graveyard <span className={styles.kbd}>G</span>
       </button>
-      <button className={styles.menuItem} onClick={() => { onMove('exile'); onClose() }}>
+      <button
+        className={styles.menuItem}
+        disabled={isMoveToExileDisabled}
+        onClick={() => { onMove('exile'); onClose() }}
+      >
         Move to Exile <span className={styles.kbd}>E</span>
       </button>
-      <button className={styles.menuItem} onClick={() => { onMove('library-top'); onClose() }}>
+      <button
+        className={styles.menuItem}
+        disabled={isMoveToLibraryDisabled}
+        onClick={() => { onMove('library-top'); onClose() }}
+      >
         Move to Top of Library <span className={styles.kbd}>L</span>
       </button>
-      <button className={styles.menuItem} onClick={() => { onMove('library-bottom'); onClose() }}>
+      <button
+        className={styles.menuItem}
+        disabled={isMoveToLibraryDisabled}
+        onClick={() => { onMove('library-bottom'); onClose() }}
+      >
         Move to Bottom of Library
       </button>
       <div className={styles.menuDivider} />
