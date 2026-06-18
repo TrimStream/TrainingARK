@@ -25,13 +25,14 @@
   border-radius: 6px;
   padding: 6px 10px;
   z-index: 20;
-  min-width: 140px;
+  min-width: 180px;
+  max-width: 260px;
   pointer-events: auto;
 }
 
 .stackLabel {
-  font-size: 0.65rem;
-  font-weight: 700;
+  font-size: 0.62rem;
+  font-weight: 600;
   color: #c9a84c;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -39,12 +40,57 @@
 }
 
 .stackItem {
-  font-size: 0.7rem;
-  color: rgba(232, 224, 212, 0.8);
-  padding: 2px 0;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 0.72rem;
 }
 
 .stackItem:last-child {
   border-bottom: none;
+}
+
+.stackType {
+  color: rgba(232, 224, 212, 0.4);
+  font-size: 0.62rem;
+  flex-shrink: 0;
+}
+
+.stackName {
+  color: #e8e0d4;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stackController {
+  color: rgba(232, 224, 212, 0.35);
+  font-size: 0.6rem;
+  flex-shrink: 0;
+}
+
+.stackActions {
+  display: flex;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.stackActions button {
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 3px;
+  color: rgba(232, 224, 212, 0.5);
+  cursor: pointer;
+  font-size: 0.62rem;
+  padding: 1px 4px;
+  transition: color 0.1s, border-color 0.1s;
+}
+
+.stackActions button:hover {
+  color: #c9a84c;
+  border-color: #c9a84c;
 }

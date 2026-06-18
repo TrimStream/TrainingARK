@@ -1,15 +1,12 @@
 'use client'
 
-import type { StackItem } from '@/types/board'
+import { useBuilderStore } from '@/store/builderStore'
 import { PlayerZone } from './PlayerZone'
 import styles from './Board.module.css'
 
-interface BoardProps {
-  stack?: StackItem[]
-  revealAll?: boolean
-}
+export function Board({ revealAll }: { revealAll?: boolean }) {
+  const { stack, resolveStack, removeFromStack } = useBuilderStore()
 
-export function Board({ stack = [], revealAll }: BoardProps) {
   return (
     <div className={styles.wrapper}>
       <div className={styles.grid}>
@@ -21,9 +18,19 @@ export function Board({ stack = [], revealAll }: BoardProps) {
         {stack.length > 0 && (
           <div className={styles.stackZone}>
             <div className={styles.stackLabel}>Stack ({stack.length})</div>
-            {[...stack].reverse().map(item => (
+            {[...stack].reverse().map((item, idx) => (
               <div key={item.id} className={styles.stackItem}>
-                {item.sourceCardName}
+                <span className={styles.stackType}>
+                  {item.type === 'cast' ? '✦' : item.type === 'triggered' ? '⟳' : '⚡'}
+                </span>
+                <span className={styles.stackName}>{item.sourceCardName}</span>
+                <span className={styles.stackController}>{item.controller}</span>
+                {idx === 0 && (
+                  <div className={styles.stackActions}>
+                    <button onClick={() => resolveStack(item.id)} title="Resolve">✓</button>
+                    <button onClick={() => removeFromStack(item.id)} title="Counter">✕</button>
+                  </div>
+                )}
               </div>
             ))}
           </div>
