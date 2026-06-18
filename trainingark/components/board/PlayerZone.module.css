@@ -105,7 +105,6 @@
     align-items: flex-start;
     padding: 0 10px;
     flex-shrink: 0;
-    cursor: pointer;
     min-width: 80px;
 }
 
@@ -117,6 +116,44 @@
     margin-bottom: 4px;
     white-space: nowrap;
     user-select: none;
+}
+
+.zoneLabelRow {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 4px;
+    width: 100%;
+}
+
+.zoneLabelText {
+    font-size: 0.62rem;
+    font-weight: 400;
+    color: rgba(232, 224, 212, 0.5);
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+    user-select: none;
+    cursor: pointer;
+}
+
+.zoneLabelText:hover {
+    color: rgba(232, 224, 212, 0.8);
+}
+
+.zoneArrow {
+    background: none;
+    border: none;
+    color: rgba(232, 224, 212, 0.3);
+    cursor: pointer;
+    font-size: 0.5rem;
+    padding: 0 2px;
+    line-height: 1;
+    flex-shrink: 0;
+    transition: color 0.1s;
+}
+
+.zoneArrow:hover {
+    color: #c9a84c;
 }
 
 .emptyPile {

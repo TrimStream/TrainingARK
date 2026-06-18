@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, type MouseEvent } from 'react'
 import Image from 'next/image'
 import type { Player, PlayerPosition, Card } from '@/types/board'
 import styles from './PlayerZone.module.css'
@@ -8,6 +8,7 @@ import { BoardCard } from './BoardCard'
 import type { ZoneTarget, StackType } from './CardContextMenu'
 import { CommanderSetupModal } from './CommanderSetupModal'
 import { useBuilderStore, type EditableZone } from '@/store/builderStore'
+import { ZoneMenu, type ZoneMenuItem } from './ZoneMenu'
 
 interface PlayerZoneProps {
   playerIndex: number
@@ -55,6 +56,7 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
   const [lifeInput, setLifeInput] = useState('')
   const [editingTax, setEditingTax] = useState(false)
   const [taxInput, setTaxInput] = useState('')
+  const [zoneMenu, setZoneMenu] = useState<{ x: number; y: number; items: ZoneMenuItem[] } | null>(null)
   const addBtnRef = useRef<HTMLButtonElement>(null)
 
   const isTop = position === 'top-left' || position === 'top-right'
@@ -139,6 +141,25 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
       setTax(playerIndex, val)
     }
     setEditingTax(false)
+  }
+
+  function moveAllFromZone(fromZone: EditableZone, toZone: EditableZone) {
+    if (!player) return
+    const cards = [...player.zones[fromZone].cards]
+    cards.forEach(card => moveCard(playerIndex, card.id, fromZone, toZone))
+  }
+
+  function discardRandom() {
+    if (!player) return
+    const cards = player.zones.hand.cards
+    if (cards.length === 0) return
+    const card = cards[Math.floor(Math.random() * cards.length)]
+    moveCard(playerIndex, card.id, 'hand', 'graveyard')
+  }
+
+  function openZoneMenu(e: MouseEvent<HTMLButtonElement>, items: ZoneMenuItem[]) {
+    e.stopPropagation()
+    setZoneMenu({ x: e.clientX, y: e.clientY, items })
   }
 
   if (!player) return null
@@ -298,29 +319,91 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
   const rightSideZones = (
     <>
       <div className={styles.zoneSection} style={{ flex: 1, minWidth: 0 }}>
-        <div className={styles.zoneLabel} onClick={() => toggle('hand')}>
-          Hand ({handCount}) {expanded === 'hand' ? '▲' : '▼'}
+        <div className={styles.zoneLabelRow}>
+          <span className={styles.zoneLabelText} onClick={() => toggle('hand')}>
+            Hand ({handCount})
+          </span>
+          <button
+            className={styles.zoneArrow}
+            onClick={e => openZoneMenu(e, [
+              { label: 'Move all to Library', action: () => moveAllFromZone('hand', 'library') },
+              { label: 'Move all to Bottom of Library', action: () => moveAllFromZone('hand', 'library') },
+              { label: 'Move all to Graveyard', action: () => moveAllFromZone('hand', 'graveyard') },
+              { label: 'Move all to Exile', action: () => moveAllFromZone('hand', 'exile') },
+              { label: 'Discard a Card Randomly', action: discardRandom, danger: true },
+            ])}
+          >
+            ▼
+          </button>
         </div>
         {renderHand()}
       </div>
       <div className={styles.stripDivider} />
       <div className={styles.zoneSection}>
-        <div className={styles.zoneLabel}>Library ({zoneCount('library')})</div>
+        <div className={styles.zoneLabelRow}>
+          <span className={styles.zoneLabelText}>Library ({zoneCount('library')})</span>
+          <button
+            className={styles.zoneArrow}
+            onClick={e => openZoneMenu(e, [
+              { label: 'View Top Card', action: () => {} },
+              { label: 'View Bottom Card', action: () => {} },
+              { label: 'Move all to Graveyard', action: () => moveAllFromZone('library', 'graveyard') },
+              { label: 'Move all to Exile', action: () => moveAllFromZone('library', 'exile') },
+            ])}
+          >
+            ▼
+          </button>
+        </div>
         {renderPile([], zoneCount('library'), false)}
       </div>
       <div className={styles.stripDivider} />
-      <div className={styles.zoneSection} onClick={() => toggle('graveyard')}>
-        <div className={styles.zoneLabel}>Graveyard ({zoneCount('graveyard')}) {expanded === 'graveyard' ? '▲' : '▼'}</div>
+      <div className={styles.zoneSection}>
+        <div className={styles.zoneLabelRow}>
+          <span className={styles.zoneLabelText} onClick={() => toggle('graveyard')}>
+            Graveyard ({zoneCount('graveyard')})
+          </span>
+          <button
+            className={styles.zoneArrow}
+            onClick={e => openZoneMenu(e, [
+              { label: 'View all', action: () => toggle('graveyard') },
+              { label: 'Move all to Hand', action: () => moveAllFromZone('graveyard', 'hand') },
+              { label: 'Move all to Library', action: () => moveAllFromZone('graveyard', 'library') },
+              { label: 'Move all to Bottom of Library', action: () => moveAllFromZone('graveyard', 'library') },
+              { label: 'Move all to Exile', action: () => moveAllFromZone('graveyard', 'exile') },
+            ])}
+          >
+            ▼
+          </button>
+        </div>
         {renderPile(player.zones.graveyard.cards, zoneCount('graveyard'), true)}
       </div>
       <div className={styles.stripDivider} />
-      <div className={styles.zoneSection} onClick={() => toggle('exile')}>
-        <div className={styles.zoneLabel}>Exile ({zoneCount('exile')}) {expanded === 'exile' ? '▲' : '▼'}</div>
+      <div className={styles.zoneSection}>
+        <div className={styles.zoneLabelRow}>
+          <span className={styles.zoneLabelText} onClick={() => toggle('exile')}>
+            Exile ({zoneCount('exile')})
+          </span>
+          <button
+            className={styles.zoneArrow}
+            onClick={e => openZoneMenu(e, [
+              { label: 'View all', action: () => toggle('exile') },
+              { label: 'Move all to Battlefield', action: () => moveAllFromZone('exile', 'battlefield') },
+              { label: 'Move all to Hand', action: () => moveAllFromZone('exile', 'hand') },
+              { label: 'Move all to Graveyard', action: () => moveAllFromZone('exile', 'graveyard') },
+              { label: 'Move all to Library', action: () => moveAllFromZone('exile', 'library') },
+              { label: 'Move all to Bottom of Library', action: () => moveAllFromZone('exile', 'library') },
+            ])}
+          >
+            ▼
+          </button>
+        </div>
         {renderPile(player.zones.exile.cards, zoneCount('exile'), true)}
       </div>
       <div className={styles.stripDivider} />
       <div className={styles.zoneSection}>
-        <div className={styles.zoneLabel}>Command</div>
+        <div className={styles.zoneLabelRow}>
+          <span className={styles.zoneLabelText}>Command</span>
+        </div>
         {renderCommandZone()}
       </div>
     </>
@@ -329,28 +412,90 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
   const leftSideZones = (
     <>
       <div className={styles.zoneSection}>
-        <div className={styles.zoneLabel}>Command</div>
+        <div className={styles.zoneLabelRow}>
+          <span className={styles.zoneLabelText}>Command</span>
+        </div>
         {renderCommandZone()}
       </div>
       <div className={styles.stripDivider} />
-      <div className={styles.zoneSection} onClick={() => toggle('exile')}>
-        <div className={styles.zoneLabel}>Exile ({zoneCount('exile')}) {expanded === 'exile' ? '▲' : '▼'}</div>
+      <div className={styles.zoneSection}>
+        <div className={styles.zoneLabelRow}>
+          <span className={styles.zoneLabelText} onClick={() => toggle('exile')}>
+            Exile ({zoneCount('exile')})
+          </span>
+          <button
+            className={styles.zoneArrow}
+            onClick={e => openZoneMenu(e, [
+              { label: 'View all', action: () => toggle('exile') },
+              { label: 'Move all to Battlefield', action: () => moveAllFromZone('exile', 'battlefield') },
+              { label: 'Move all to Hand', action: () => moveAllFromZone('exile', 'hand') },
+              { label: 'Move all to Graveyard', action: () => moveAllFromZone('exile', 'graveyard') },
+              { label: 'Move all to Library', action: () => moveAllFromZone('exile', 'library') },
+              { label: 'Move all to Bottom of Library', action: () => moveAllFromZone('exile', 'library') },
+            ])}
+          >
+            ▼
+          </button>
+        </div>
         {renderPile(player.zones.exile.cards, zoneCount('exile'), true)}
       </div>
       <div className={styles.stripDivider} />
-      <div className={styles.zoneSection} onClick={() => toggle('graveyard')}>
-        <div className={styles.zoneLabel}>Graveyard ({zoneCount('graveyard')}) {expanded === 'graveyard' ? '▲' : '▼'}</div>
+      <div className={styles.zoneSection}>
+        <div className={styles.zoneLabelRow}>
+          <span className={styles.zoneLabelText} onClick={() => toggle('graveyard')}>
+            Graveyard ({zoneCount('graveyard')})
+          </span>
+          <button
+            className={styles.zoneArrow}
+            onClick={e => openZoneMenu(e, [
+              { label: 'View all', action: () => toggle('graveyard') },
+              { label: 'Move all to Hand', action: () => moveAllFromZone('graveyard', 'hand') },
+              { label: 'Move all to Library', action: () => moveAllFromZone('graveyard', 'library') },
+              { label: 'Move all to Bottom of Library', action: () => moveAllFromZone('graveyard', 'library') },
+              { label: 'Move all to Exile', action: () => moveAllFromZone('graveyard', 'exile') },
+            ])}
+          >
+            ▼
+          </button>
+        </div>
         {renderPile(player.zones.graveyard.cards, zoneCount('graveyard'), true)}
       </div>
       <div className={styles.stripDivider} />
       <div className={styles.zoneSection}>
-        <div className={styles.zoneLabel}>Library ({zoneCount('library')})</div>
+        <div className={styles.zoneLabelRow}>
+          <span className={styles.zoneLabelText}>Library ({zoneCount('library')})</span>
+          <button
+            className={styles.zoneArrow}
+            onClick={e => openZoneMenu(e, [
+              { label: 'View Top Card', action: () => {} },
+              { label: 'View Bottom Card', action: () => {} },
+              { label: 'Move all to Graveyard', action: () => moveAllFromZone('library', 'graveyard') },
+              { label: 'Move all to Exile', action: () => moveAllFromZone('library', 'exile') },
+            ])}
+          >
+            ▼
+          </button>
+        </div>
         {renderPile([], zoneCount('library'), false)}
       </div>
       <div className={styles.stripDivider} />
       <div className={styles.zoneSection} style={{ flex: 1, minWidth: 0 }}>
-        <div className={styles.zoneLabel} onClick={() => toggle('hand')}>
-          Hand ({handCount}) {expanded === 'hand' ? '▲' : '▼'}
+        <div className={styles.zoneLabelRow}>
+          <span className={styles.zoneLabelText} onClick={() => toggle('hand')}>
+            Hand ({handCount})
+          </span>
+          <button
+            className={styles.zoneArrow}
+            onClick={e => openZoneMenu(e, [
+              { label: 'Move all to Library', action: () => moveAllFromZone('hand', 'library') },
+              { label: 'Move all to Bottom of Library', action: () => moveAllFromZone('hand', 'library') },
+              { label: 'Move all to Graveyard', action: () => moveAllFromZone('hand', 'graveyard') },
+              { label: 'Move all to Exile', action: () => moveAllFromZone('hand', 'exile') },
+              { label: 'Discard a Card Randomly', action: discardRandom, danger: true },
+            ])}
+          >
+            ▼
+          </button>
         </div>
         {renderHand()}
       </div>
@@ -458,6 +603,14 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
           />
         </div>
       )}
+      {zoneMenu && (
+        <ZoneMenu
+          x={zoneMenu.x}
+          y={zoneMenu.y}
+          items={zoneMenu.items}
+          onClose={() => setZoneMenu(null)}
+        />
+      )}
     </div>
   )
 }
@@ -473,20 +626,25 @@ function CardAddSearch({ decklist, onSelect, onClose }: {
   const [loading, setLoading] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  function filterByDecklist(): string[] {
-    if (decklist.length === 0) return []
-    const q = query.toLowerCase()
-    return decklist.filter(d => d.toLowerCase().includes(q)).slice(0, 8)
-  }
-
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
-    if (query.length < 2) { setSuggestions([]); return }
+    if (query.length < 2) {
+      debounceRef.current = setTimeout(() => {
+        setSuggestions([])
+        setActiveIndex(-1)
+        setLoading(false)
+      }, 0)
+      return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
+    }
 
     if (decklist.length > 0) {
-      setSuggestions(filterByDecklist())
-      setActiveIndex(-1)
-      return
+      debounceRef.current = setTimeout(() => {
+        const q = query.toLowerCase()
+        setSuggestions(decklist.filter(d => d.toLowerCase().includes(q)).slice(0, 8))
+        setActiveIndex(-1)
+        setLoading(false)
+      }, 0)
+      return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
     }
 
     debounceRef.current = setTimeout(async () => {
@@ -502,7 +660,7 @@ function CardAddSearch({ decklist, onSelect, onClose }: {
       }
     }, 180)
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
-  }, [query])
+  }, [query, decklist])
 
   async function selectCard(name: string) {
     try {
