@@ -6,9 +6,11 @@ import type { Player, PlayerPosition, Card } from '@/types/board'
 import styles from './PlayerZone.module.css'
 import { BoardCard } from './BoardCard'
 import type { ZoneTarget, StackType } from './CardContextMenu'
+import { CommanderSetupModal } from './CommanderSetupModal'
+import { useBuilderStore } from '@/store/builderStore'
 
 interface PlayerZoneProps {
-  player: Player
+  playerIndex: number
   position: PlayerPosition
   revealAll?: boolean
   onMove?: (cardId: string, target: ZoneTarget) => void
@@ -24,10 +26,16 @@ type ExpandableZone = 'hand' | 'graveyard' | 'exile'
 
 function formatTax(tax: Player['commanderTax']): string {
   if (Array.isArray(tax)) return `Tax: ${tax[0]} / ${tax[1]}`
-  return tax > 0 ? `Tax: ${tax}` : ''
+  return `Tax: ${tax}`
 }
 
-export function PlayerZone({ player, position, revealAll, onMove, onCastToStack }: PlayerZoneProps) {
+const PLAYER_NAMES = ['You', 'Opponent 1', 'Opponent 2', 'Opponent 3']
+
+export function PlayerZone({ playerIndex, position, revealAll, onMove, onCastToStack }: PlayerZoneProps) {
+  const { players, updatePlayer, confirmSetup, setupComplete } = useBuilderStore()
+  const player = players?.[playerIndex]
+  const isSetupDone = setupComplete[playerIndex]
+
   const [expanded, setExpanded] = useState<ExpandableZone | null>(null)
 
   const isTop = position === 'top-left' || position === 'top-right'
@@ -38,6 +46,7 @@ export function PlayerZone({ player, position, revealAll, onMove, onCastToStack 
   }
 
   function zoneCount(zoneName: keyof Player['zones']): number {
+    if (!player) return 0
     const zone = player.zones[zoneName]
     return zone.cardCount ?? zone.cards.length
   }
@@ -45,6 +54,24 @@ export function PlayerZone({ player, position, revealAll, onMove, onCastToStack 
   function cardSrc(card: Card, revealed: boolean): string {
     return revealed && card.imageUrl ? card.imageUrl : CARD_BACK
   }
+
+  function handleSetupConfirm(partial: Partial<Player>, _commanderNames: string[], decklist: string[]) {
+    if (!player) return
+    const updated: Player = {
+      ...(player as Player),
+      ...partial,
+      zones: {
+        ...(player as Player).zones,
+        ...(partial.zones ?? {}),
+      },
+      commanderTax: partial.commanderTax ?? 0,
+    }
+    updatePlayer(playerIndex, updated)
+    confirmSetup(playerIndex)
+    console.log('Decklist for player', playerIndex, decklist)
+  }
+
+  if (!player) return null
 
   const handCount = zoneCount('hand')
   const handRevealed = revealAll || player.zones.hand.revealed
@@ -280,12 +307,19 @@ export function PlayerZone({ player, position, revealAll, onMove, onCastToStack 
 
   return (
     <div className={styles.playmat}>
+      {!isSetupDone && (
+        <CommanderSetupModal
+          playerIndex={playerIndex}
+          playerName={PLAYER_NAMES[playerIndex]}
+          onConfirm={handleSetupConfirm}
+        />
+      )}
       {isTop && expandedPanel}
       {isTop && strip}
       <div className={styles.battlefield}>
         <div className={styles.watermarkWrap}>
-		  <Image src="/tark-dark.png" alt="" fill style={{ objectFit: 'contain' }} />
-		</div>
+          <Image src="/tark-dark.png" alt="" fill style={{ objectFit: 'contain' }} />
+        </div>
         {isTop ? [...sections].reverse() : sections}
       </div>
       {!isTop && strip}
