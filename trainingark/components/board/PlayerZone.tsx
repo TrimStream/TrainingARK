@@ -1,14 +1,14 @@
 'use client'
 
-import { useState, useEffect, useRef, type MouseEvent } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
 import type { Player, PlayerPosition, Card } from '@/types/board'
 import styles from './PlayerZone.module.css'
 import { BoardCard } from './BoardCard'
 import type { ZoneTarget, StackType } from './CardContextMenu'
+import { ZoneMenu, type ZoneMenuItem } from './ZoneMenu'
 import { CommanderSetupModal } from './CommanderSetupModal'
 import { useBuilderStore, type EditableZone } from '@/store/builderStore'
-import { ZoneMenu, type ZoneMenuItem } from './ZoneMenu'
 
 interface PlayerZoneProps {
   playerIndex: number
@@ -21,7 +21,7 @@ const CARD_W = 60
 const CARD_H = 84
 const HAND_OVERLAP = 28
 
-type ExpandableZone = 'hand' | 'graveyard' | 'exile'
+type ExpandableZone = 'hand' | 'graveyard' | 'exile' | 'library'
 
 function formatTax(tax: Player['commanderTax']): string {
   if (Array.isArray(tax)) return `Tax: ${tax[0]} / ${tax[1]}`
@@ -39,10 +39,23 @@ const ZONE_TARGET_MAP: Record<ZoneTarget, EditableZone> = {
   'library-bottom': 'library',
 }
 
+function parseCardType(typeLine: string): Card['cardType'] {
+  if (typeLine.includes('Creature')) return 'creature'
+  if (typeLine.includes('Land')) return 'land'
+  if (typeLine.includes('Planeswalker')) return 'planeswalker'
+  if (typeLine.includes('Artifact')) return 'artifact'
+  if (typeLine.includes('Enchantment')) return 'enchantment'
+  if (typeLine.includes('Instant')) return 'instant'
+  if (typeLine.includes('Sorcery')) return 'sorcery'
+  if (typeLine.includes('Battle')) return 'battle'
+  return 'artifact'
+}
+
 export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps) {
   const {
     players, updatePlayer, confirmSetup, setupComplete,
-    moveCard, addCard, castToStack, setLife, setTax, decklists,
+    moveCard, addCard, castToStack, setLife, setTax, setTaxPartner,
+    decklists, drawCard, shuffleLibrary,
   } = useBuilderStore()
 
   const player = players?.[playerIndex]
@@ -50,11 +63,12 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
   const decklist = decklists[playerIndex]
 
   const [expanded, setExpanded] = useState<ExpandableZone | null>(null)
+  const [filterText, setFilterText] = useState('')
   const [showCardSearch, setShowCardSearch] = useState<EditableZone | null>(null)
   const [cardSearchRect, setCardSearchRect] = useState<DOMRect | null>(null)
   const [editingLife, setEditingLife] = useState(false)
   const [lifeInput, setLifeInput] = useState('')
-  const [editingTax, setEditingTax] = useState(false)
+  const [editingTax, setEditingTax] = useState<0 | 1 | null>(null)
   const [taxInput, setTaxInput] = useState('')
   const [zoneMenu, setZoneMenu] = useState<{ x: number; y: number; items: ZoneMenuItem[] } | null>(null)
   const addBtnRef = useRef<HTMLButtonElement>(null)
@@ -63,6 +77,7 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
   const isRight = position === 'top-right' || position === 'bottom-right'
 
   function toggle(zone: ExpandableZone) {
+    setFilterText('')
     setExpanded(prev => prev === zone ? null : zone)
   }
 
@@ -134,13 +149,13 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
   function commitTax() {
     if (!player) return
     const val = parseInt(taxInput)
-    if (isNaN(val)) { setEditingTax(false); return }
+    if (isNaN(val) || editingTax === null) { setEditingTax(null); return }
     if (Array.isArray(player.commanderTax)) {
-      setTax(playerIndex, [val, player.commanderTax[1]])
+      setTaxPartner(playerIndex, editingTax, val)
     } else {
       setTax(playerIndex, val)
     }
-    setEditingTax(false)
+    setEditingTax(null)
   }
 
   function moveAllFromZone(fromZone: EditableZone, toZone: EditableZone) {
@@ -157,12 +172,29 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
     moveCard(playerIndex, card.id, 'hand', 'graveyard')
   }
 
-  function openZoneMenu(e: MouseEvent<HTMLButtonElement>, items: ZoneMenuItem[]) {
+  function openZoneMenu(e: React.MouseEvent, items: ZoneMenuItem[]) {
     e.stopPropagation()
     setZoneMenu({ x: e.clientX, y: e.clientY, items })
   }
 
+  function openOuterMenu(e: React.MouseEvent) {
+    e.stopPropagation()
+    const items: ZoneMenuItem[] = [
+      { label: 'Search Library', action: () => toggle('library') },
+      { label: 'Shuffle Library', action: () => shuffleLibrary(playerIndex) },
+      { label: 'Draw', action: () => drawCard(playerIndex) },
+      {
+        label: 'Add Token', action: () => {
+          const rect = addBtnRef.current?.getBoundingClientRect()
+          if (rect) handleAddCard('battlefield', rect)
+        },
+      },
+    ]
+    setZoneMenu({ x: e.clientX, y: e.clientY, items })
+  }
+
   if (!player) return null
+  const p: Player = player
 
   const handCount = zoneCount('hand')
   const handRevealed = revealAll || player.zones.hand.revealed
@@ -180,8 +212,13 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
       >
         {handRevealed && handCards.length > 0
           ? handCards.map((card: Card, i: number) => (
-              <div key={card.id} className={styles.fanCard} style={{ left: i * HAND_OVERLAP }}>
-                <Image src={cardSrc(card, true)} alt={card.name} width={CARD_W} height={CARD_H} style={{ borderRadius: 4, display: 'block', width: CARD_W, height: CARD_H }} />
+              <div key={card.id} className={styles.fanCard} style={{ left: i * HAND_OVERLAP }} onClick={e => e.stopPropagation()}>
+                <BoardCard
+                  card={card}
+                  onMove={t => handleMove(card.id, t)}
+                  onCastToStack={t => handleCastToStack(card.id, t)}
+                  currentZone="hand"
+                />
               </div>
             ))
           : Array.from({ length: count }).map((_, i: number) => (
@@ -194,19 +231,25 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
     )
   }
 
-  function renderPile(cards: Card[], count: number, revealed: boolean) {
+  function renderPile(cards: Card[], count: number, revealed: boolean, zone: EditableZone) {
     if (count === 0) {
       return <div className={styles.emptyPile} style={{ width: CARD_W, height: CARD_H }} />
     }
     const topCard = cards[cards.length - 1]
+    if (!topCard) {
+      return (
+        <div style={{ width: CARD_W, height: CARD_H }}>
+          <Image src={CARD_BACK} alt="top card" width={CARD_W} height={CARD_H} style={{ borderRadius: 4, display: 'block', width: CARD_W, height: CARD_H }} />
+        </div>
+      )
+    }
     return (
-      <div style={{ width: CARD_W, height: CARD_H, position: 'relative', cursor: 'pointer' }}>
-        <Image
-          src={topCard && revealed ? cardSrc(topCard, true) : CARD_BACK}
-          alt="top card"
-          width={CARD_W}
-          height={CARD_H}
-          style={{ borderRadius: 4, display: 'block', width: CARD_W, height: CARD_H }}
+      <div onClick={e => e.stopPropagation()}>
+        <BoardCard
+          card={revealed ? topCard : { ...topCard, imageUrl: undefined }}
+          onMove={t => handleMove(topCard.id, t)}
+          onCastToStack={t => handleCastToStack(topCard.id, t)}
+          currentZone={zone}
         />
       </div>
     )
@@ -221,12 +264,11 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
       <div style={{ position: 'relative', width: cards.length === 1 ? CARD_W : CARD_W + 16, height: CARD_H }}>
         {cards.map((card: Card, i: number) => (
           <div key={card.id} style={{ position: 'absolute', left: i * 16, top: 0, zIndex: i }}>
-            <Image
-              src={cardSrc(card, true)}
-              alt={card.name}
-              width={CARD_W}
-              height={CARD_H}
-              style={{ borderRadius: 4, display: 'block', width: CARD_W, height: CARD_H }}
+            <BoardCard
+              card={card}
+              onMove={t => handleMove(card.id, t)}
+              onCastToStack={t => handleCastToStack(card.id, t)}
+              currentZone="command"
             />
           </div>
         ))}
@@ -234,33 +276,62 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
     )
   }
 
+  function getExpandedCards(): Card[] {
+    if (!expanded || !player) return []
+    if (expanded === 'hand') return handRevealed ? handCards : []
+    return player.zones[expanded].cards
+  }
+
+  const expandedCardsRaw = getExpandedCards()
+  const expandedCards = filterText
+    ? expandedCardsRaw.filter(c => c.name.toLowerCase().includes(filterText.toLowerCase()))
+    : expandedCardsRaw
+  const topExpandedCard = expandedCards[expandedCards.length - 1]
+
   const expandedPanel = expanded && (
     <div className={styles.expandedPanel}>
-      <div className={styles.expandedLabel}>
-        {expanded === 'hand'
-          ? `Hand (${handCount})`
-          : expanded === 'graveyard'
-          ? `Graveyard (${zoneCount('graveyard')})`
-          : `Exile (${zoneCount('exile')})`}
-        <button className={styles.closeExpanded} onClick={() => setExpanded(null)}>x</button>
+      <div className={styles.expandedHeader}>
+        <span>Viewing {expanded[0].toUpperCase() + expanded.slice(1)}</span>
+        <button className={styles.closeExpanded} onClick={() => setExpanded(null)}>×</button>
       </div>
-      <div className={styles.expandedCards}>
-        {expanded === 'hand' && (
-          handRevealed && handCards.length > 0
-            ? handCards.map((card: Card) => (
-                <Image key={card.id} src={cardSrc(card, true)} alt={card.name} width={CARD_W} height={CARD_H} style={{ borderRadius: 4, flexShrink: 0, width: CARD_W, height: CARD_H }} />
-              ))
-            : Array.from({ length: handCount }).map((_, i: number) => (
-                <Image key={i} src={CARD_BACK} alt="Card back" width={CARD_W} height={CARD_H} style={{ borderRadius: 4, flexShrink: 0, width: CARD_W, height: CARD_H }} />
-              ))
+
+      {topExpandedCard && (
+        <div className={styles.expandedTopCard}>
+          <Image
+            src={cardSrc(topExpandedCard, true)}
+            alt={topExpandedCard.name}
+            width={180}
+            height={252}
+            style={{ borderRadius: 8, display: 'block', width: '100%', height: 'auto' }}
+          />
+        </div>
+      )}
+
+      <div className={styles.expandedList}>
+        {expandedCards.length === 0 && (
+          <p className={styles.emptyZoneText}>No cards here.</p>
         )}
-        {expanded === 'graveyard' && player.zones.graveyard.cards.map((card: Card) => (
-          <Image key={card.id} src={cardSrc(card, true)} alt={card.name} width={CARD_W} height={CARD_H} style={{ borderRadius: 4, flexShrink: 0, width: CARD_W, height: CARD_H }} />
-        ))}
-        {expanded === 'exile' && player.zones.exile.cards.map((card: Card) => (
-          <Image key={card.id} src={cardSrc(card, true)} alt={card.name} width={CARD_W} height={CARD_H} style={{ borderRadius: 4, flexShrink: 0, width: CARD_W, height: CARD_H }} />
+        {[...expandedCards].reverse().map(card => (
+          <div key={card.id} className={styles.expandedRow} onClick={e => e.stopPropagation()}>
+            <span className={styles.expandedRowName}>{card.name}</span>
+            <BoardCard
+              card={card}
+              onMove={t => handleMove(card.id, t)}
+              onCastToStack={t => handleCastToStack(card.id, t)}
+              currentZone={expanded}
+              compact
+            />
+          </div>
         ))}
       </div>
+
+      <input
+        className={styles.expandedFilter}
+        placeholder="Filter..."
+        value={filterText}
+        onChange={e => setFilterText(e.target.value)}
+        onClick={e => e.stopPropagation()}
+      />
     </div>
   )
 
@@ -284,120 +355,140 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
     </span>
   )
 
-  const taxDisplay = editingTax ? (
-    <input
-      className={styles.inlineInput}
-      type="number"
-      value={taxInput}
-      onChange={e => setTaxInput(e.target.value)}
-      onBlur={commitTax}
-      onKeyDown={e => { if (e.key === 'Enter') commitTax(); if (e.key === 'Escape') setEditingTax(false) }}
-      autoFocus
-    />
-  ) : (
-    <span
-      className={styles.playerTax}
-      onClick={() => {
-        const t = player.commanderTax
-        setTaxInput(String(Array.isArray(t) ? t[0] : t))
-        setEditingTax(true)
-      }}
-      title="Click to edit"
-    >
-      {formatTax(player.commanderTax)}
-    </span>
-  )
+  const isPartner = Array.isArray(p.commanderTax)
+
+  function renderTax() {
+    if (!isPartner) {
+      if (editingTax === 0) {
+        return (
+          <input
+            className={styles.inlineInput}
+            type="number"
+            value={taxInput}
+            onChange={e => setTaxInput(e.target.value)}
+            onBlur={commitTax}
+            onKeyDown={e => { if (e.key === 'Enter') commitTax(); if (e.key === 'Escape') setEditingTax(null) }}
+            autoFocus
+          />
+        )
+      }
+      return (
+        <span
+          className={styles.playerTax}
+          onClick={() => { setTaxInput(String(p.commanderTax)); setEditingTax(0) }}
+          title="Click to edit"
+        >
+          {formatTax(p.commanderTax)}
+        </span>
+      )
+    }
+
+    const taxArr = p.commanderTax as [number, number]
+    const t0 = taxArr[0]
+    const t1 = taxArr[1]
+    return (
+      <span className={styles.playerTax}>
+        Tax:{' '}
+        {editingTax === 0 ? (
+          <input
+            className={styles.inlineInput}
+            type="number"
+            value={taxInput}
+            onChange={e => setTaxInput(e.target.value)}
+            onBlur={commitTax}
+            onKeyDown={e => { if (e.key === 'Enter') commitTax(); if (e.key === 'Escape') setEditingTax(null) }}
+            autoFocus
+          />
+        ) : (
+          <span onClick={() => { setTaxInput(String(t0)); setEditingTax(0) }} style={{ cursor: 'pointer' }} title="Click to edit">{t0}</span>
+        )}
+        {' / '}
+        {editingTax === 1 ? (
+          <input
+            className={styles.inlineInput}
+            type="number"
+            value={taxInput}
+            onChange={e => setTaxInput(e.target.value)}
+            onBlur={commitTax}
+            onKeyDown={e => { if (e.key === 'Enter') commitTax(); if (e.key === 'Escape') setEditingTax(null) }}
+            autoFocus
+          />
+        ) : (
+          <span onClick={() => { setTaxInput(String(t1)); setEditingTax(1) }} style={{ cursor: 'pointer' }} title="Click to edit">{t1}</span>
+        )}
+      </span>
+    )
+  }
 
   const playerMetaBlock = (
     <div className={styles.playerMeta}>
       <span className={styles.playerName}>{player.name}</span>
       {lifeDisplay}
-      {taxDisplay}
+      {renderTax()}
     </div>
   )
+
+  function zoneHeader(label: string, count: number, expandKey: ExpandableZone | null, menuItems: ZoneMenuItem[], onAdd?: () => void) {
+    return (
+      <div className={styles.zoneLabelRow}>
+        <span
+          className={styles.zoneLabelText}
+          onClick={() => expandKey && toggle(expandKey)}
+        >
+          {label} ({count})
+        </span>
+        {onAdd && (
+          <button className={styles.zoneAddBtn} onClick={e => { e.stopPropagation(); onAdd() }} title={`Add card to ${label}`}>+</button>
+        )}
+        <button className={styles.zoneArrow} onClick={e => openZoneMenu(e, menuItems)}>▼</button>
+      </div>
+    )
+  }
 
   const rightSideZones = (
     <>
       <div className={styles.zoneSection} style={{ flex: 1, minWidth: 0 }}>
-        <div className={styles.zoneLabelRow}>
-          <span className={styles.zoneLabelText} onClick={() => toggle('hand')}>
-            Hand ({handCount})
-          </span>
-          <button
-            className={styles.zoneArrow}
-            onClick={e => openZoneMenu(e, [
-              { label: 'Move all to Library', action: () => moveAllFromZone('hand', 'library') },
-              { label: 'Move all to Bottom of Library', action: () => moveAllFromZone('hand', 'library') },
-              { label: 'Move all to Graveyard', action: () => moveAllFromZone('hand', 'graveyard') },
-              { label: 'Move all to Exile', action: () => moveAllFromZone('hand', 'exile') },
-              { label: 'Discard a Card Randomly', action: discardRandom, danger: true },
-            ])}
-          >
-            ▼
-          </button>
-        </div>
+        {zoneHeader('Hand', handCount, 'hand', [
+          { label: 'Move all to Library', action: () => moveAllFromZone('hand', 'library') },
+          { label: 'Move all to Bottom of Library', action: () => moveAllFromZone('hand', 'library') },
+          { label: 'Move all to Graveyard', action: () => moveAllFromZone('hand', 'graveyard') },
+          { label: 'Move all to Exile', action: () => moveAllFromZone('hand', 'exile') },
+          { label: 'Discard a Card Randomly', action: discardRandom, danger: true },
+        ], () => { const r = addBtnRef.current?.getBoundingClientRect(); if (r) handleAddCard('hand', r) })}
         {renderHand()}
       </div>
       <div className={styles.stripDivider} />
       <div className={styles.zoneSection}>
-        <div className={styles.zoneLabelRow}>
-          <span className={styles.zoneLabelText}>Library ({zoneCount('library')})</span>
-          <button
-            className={styles.zoneArrow}
-            onClick={e => openZoneMenu(e, [
-              { label: 'View Top Card', action: () => {} },
-              { label: 'View Bottom Card', action: () => {} },
-              { label: 'Move all to Graveyard', action: () => moveAllFromZone('library', 'graveyard') },
-              { label: 'Move all to Exile', action: () => moveAllFromZone('library', 'exile') },
-            ])}
-          >
-            ▼
-          </button>
-        </div>
-        {renderPile([], zoneCount('library'), false)}
+        {zoneHeader('Library', zoneCount('library'), 'library', [
+          { label: 'View Top Card', action: () => toggle('library') },
+          { label: 'Move all to Graveyard', action: () => moveAllFromZone('library', 'graveyard') },
+          { label: 'Move all to Exile', action: () => moveAllFromZone('library', 'exile') },
+          { label: 'Shuffle', action: () => shuffleLibrary(playerIndex) },
+        ], () => { const r = addBtnRef.current?.getBoundingClientRect(); if (r) handleAddCard('library', r) })}
+        {renderPile([], zoneCount('library'), false, 'library')}
       </div>
       <div className={styles.stripDivider} />
       <div className={styles.zoneSection}>
-        <div className={styles.zoneLabelRow}>
-          <span className={styles.zoneLabelText} onClick={() => toggle('graveyard')}>
-            Graveyard ({zoneCount('graveyard')})
-          </span>
-          <button
-            className={styles.zoneArrow}
-            onClick={e => openZoneMenu(e, [
-              { label: 'View all', action: () => toggle('graveyard') },
-              { label: 'Move all to Hand', action: () => moveAllFromZone('graveyard', 'hand') },
-              { label: 'Move all to Library', action: () => moveAllFromZone('graveyard', 'library') },
-              { label: 'Move all to Bottom of Library', action: () => moveAllFromZone('graveyard', 'library') },
-              { label: 'Move all to Exile', action: () => moveAllFromZone('graveyard', 'exile') },
-            ])}
-          >
-            ▼
-          </button>
-        </div>
-        {renderPile(player.zones.graveyard.cards, zoneCount('graveyard'), true)}
+        {zoneHeader('Graveyard', zoneCount('graveyard'), 'graveyard', [
+          { label: 'View all', action: () => toggle('graveyard') },
+          { label: 'Move all to Hand', action: () => moveAllFromZone('graveyard', 'hand') },
+          { label: 'Move all to Library', action: () => moveAllFromZone('graveyard', 'library') },
+          { label: 'Move all to Bottom of Library', action: () => moveAllFromZone('graveyard', 'library') },
+          { label: 'Move all to Exile', action: () => moveAllFromZone('graveyard', 'exile') },
+        ], () => { const r = addBtnRef.current?.getBoundingClientRect(); if (r) handleAddCard('graveyard', r) })}
+        {renderPile(player.zones.graveyard.cards, zoneCount('graveyard'), true, 'graveyard')}
       </div>
       <div className={styles.stripDivider} />
       <div className={styles.zoneSection}>
-        <div className={styles.zoneLabelRow}>
-          <span className={styles.zoneLabelText} onClick={() => toggle('exile')}>
-            Exile ({zoneCount('exile')})
-          </span>
-          <button
-            className={styles.zoneArrow}
-            onClick={e => openZoneMenu(e, [
-              { label: 'View all', action: () => toggle('exile') },
-              { label: 'Move all to Battlefield', action: () => moveAllFromZone('exile', 'battlefield') },
-              { label: 'Move all to Hand', action: () => moveAllFromZone('exile', 'hand') },
-              { label: 'Move all to Graveyard', action: () => moveAllFromZone('exile', 'graveyard') },
-              { label: 'Move all to Library', action: () => moveAllFromZone('exile', 'library') },
-              { label: 'Move all to Bottom of Library', action: () => moveAllFromZone('exile', 'library') },
-            ])}
-          >
-            ▼
-          </button>
-        </div>
-        {renderPile(player.zones.exile.cards, zoneCount('exile'), true)}
+        {zoneHeader('Exile', zoneCount('exile'), 'exile', [
+          { label: 'View all', action: () => toggle('exile') },
+          { label: 'Move all to Battlefield', action: () => moveAllFromZone('exile', 'battlefield') },
+          { label: 'Move all to Hand', action: () => moveAllFromZone('exile', 'hand') },
+          { label: 'Move all to Graveyard', action: () => moveAllFromZone('exile', 'graveyard') },
+          { label: 'Move all to Library', action: () => moveAllFromZone('exile', 'library') },
+          { label: 'Move all to Bottom of Library', action: () => moveAllFromZone('exile', 'library') },
+        ], () => { const r = addBtnRef.current?.getBoundingClientRect(); if (r) handleAddCard('exile', r) })}
+        {renderPile(player.zones.exile.cards, zoneCount('exile'), true, 'exile')}
       </div>
       <div className={styles.stripDivider} />
       <div className={styles.zoneSection}>
@@ -419,84 +510,46 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
       </div>
       <div className={styles.stripDivider} />
       <div className={styles.zoneSection}>
-        <div className={styles.zoneLabelRow}>
-          <span className={styles.zoneLabelText} onClick={() => toggle('exile')}>
-            Exile ({zoneCount('exile')})
-          </span>
-          <button
-            className={styles.zoneArrow}
-            onClick={e => openZoneMenu(e, [
-              { label: 'View all', action: () => toggle('exile') },
-              { label: 'Move all to Battlefield', action: () => moveAllFromZone('exile', 'battlefield') },
-              { label: 'Move all to Hand', action: () => moveAllFromZone('exile', 'hand') },
-              { label: 'Move all to Graveyard', action: () => moveAllFromZone('exile', 'graveyard') },
-              { label: 'Move all to Library', action: () => moveAllFromZone('exile', 'library') },
-              { label: 'Move all to Bottom of Library', action: () => moveAllFromZone('exile', 'library') },
-            ])}
-          >
-            ▼
-          </button>
-        </div>
-        {renderPile(player.zones.exile.cards, zoneCount('exile'), true)}
+        {zoneHeader('Exile', zoneCount('exile'), 'exile', [
+          { label: 'View all', action: () => toggle('exile') },
+          { label: 'Move all to Battlefield', action: () => moveAllFromZone('exile', 'battlefield') },
+          { label: 'Move all to Hand', action: () => moveAllFromZone('exile', 'hand') },
+          { label: 'Move all to Graveyard', action: () => moveAllFromZone('exile', 'graveyard') },
+          { label: 'Move all to Library', action: () => moveAllFromZone('exile', 'library') },
+          { label: 'Move all to Bottom of Library', action: () => moveAllFromZone('exile', 'library') },
+        ], () => { const r = addBtnRef.current?.getBoundingClientRect(); if (r) handleAddCard('exile', r) })}
+        {renderPile(player.zones.exile.cards, zoneCount('exile'), true, 'exile')}
       </div>
       <div className={styles.stripDivider} />
       <div className={styles.zoneSection}>
-        <div className={styles.zoneLabelRow}>
-          <span className={styles.zoneLabelText} onClick={() => toggle('graveyard')}>
-            Graveyard ({zoneCount('graveyard')})
-          </span>
-          <button
-            className={styles.zoneArrow}
-            onClick={e => openZoneMenu(e, [
-              { label: 'View all', action: () => toggle('graveyard') },
-              { label: 'Move all to Hand', action: () => moveAllFromZone('graveyard', 'hand') },
-              { label: 'Move all to Library', action: () => moveAllFromZone('graveyard', 'library') },
-              { label: 'Move all to Bottom of Library', action: () => moveAllFromZone('graveyard', 'library') },
-              { label: 'Move all to Exile', action: () => moveAllFromZone('graveyard', 'exile') },
-            ])}
-          >
-            ▼
-          </button>
-        </div>
-        {renderPile(player.zones.graveyard.cards, zoneCount('graveyard'), true)}
+        {zoneHeader('Graveyard', zoneCount('graveyard'), 'graveyard', [
+          { label: 'View all', action: () => toggle('graveyard') },
+          { label: 'Move all to Hand', action: () => moveAllFromZone('graveyard', 'hand') },
+          { label: 'Move all to Library', action: () => moveAllFromZone('graveyard', 'library') },
+          { label: 'Move all to Bottom of Library', action: () => moveAllFromZone('graveyard', 'library') },
+          { label: 'Move all to Exile', action: () => moveAllFromZone('graveyard', 'exile') },
+        ], () => { const r = addBtnRef.current?.getBoundingClientRect(); if (r) handleAddCard('graveyard', r) })}
+        {renderPile(player.zones.graveyard.cards, zoneCount('graveyard'), true, 'graveyard')}
       </div>
       <div className={styles.stripDivider} />
       <div className={styles.zoneSection}>
-        <div className={styles.zoneLabelRow}>
-          <span className={styles.zoneLabelText}>Library ({zoneCount('library')})</span>
-          <button
-            className={styles.zoneArrow}
-            onClick={e => openZoneMenu(e, [
-              { label: 'View Top Card', action: () => {} },
-              { label: 'View Bottom Card', action: () => {} },
-              { label: 'Move all to Graveyard', action: () => moveAllFromZone('library', 'graveyard') },
-              { label: 'Move all to Exile', action: () => moveAllFromZone('library', 'exile') },
-            ])}
-          >
-            ▼
-          </button>
-        </div>
-        {renderPile([], zoneCount('library'), false)}
+        {zoneHeader('Library', zoneCount('library'), 'library', [
+          { label: 'View Top Card', action: () => toggle('library') },
+          { label: 'Move all to Graveyard', action: () => moveAllFromZone('library', 'graveyard') },
+          { label: 'Move all to Exile', action: () => moveAllFromZone('library', 'exile') },
+          { label: 'Shuffle', action: () => shuffleLibrary(playerIndex) },
+        ], () => { const r = addBtnRef.current?.getBoundingClientRect(); if (r) handleAddCard('library', r) })}
+        {renderPile([], zoneCount('library'), false, 'library')}
       </div>
       <div className={styles.stripDivider} />
       <div className={styles.zoneSection} style={{ flex: 1, minWidth: 0 }}>
-        <div className={styles.zoneLabelRow}>
-          <span className={styles.zoneLabelText} onClick={() => toggle('hand')}>
-            Hand ({handCount})
-          </span>
-          <button
-            className={styles.zoneArrow}
-            onClick={e => openZoneMenu(e, [
-              { label: 'Move all to Library', action: () => moveAllFromZone('hand', 'library') },
-              { label: 'Move all to Bottom of Library', action: () => moveAllFromZone('hand', 'library') },
-              { label: 'Move all to Graveyard', action: () => moveAllFromZone('hand', 'graveyard') },
-              { label: 'Move all to Exile', action: () => moveAllFromZone('hand', 'exile') },
-              { label: 'Discard a Card Randomly', action: discardRandom, danger: true },
-            ])}
-          >
-            ▼
-          </button>
-        </div>
+        {zoneHeader('Hand', handCount, 'hand', [
+          { label: 'Move all to Library', action: () => moveAllFromZone('hand', 'library') },
+          { label: 'Move all to Bottom of Library', action: () => moveAllFromZone('hand', 'library') },
+          { label: 'Move all to Graveyard', action: () => moveAllFromZone('hand', 'graveyard') },
+          { label: 'Move all to Exile', action: () => moveAllFromZone('hand', 'exile') },
+          { label: 'Discard a Card Randomly', action: discardRandom, danger: true },
+        ], () => { const r = addBtnRef.current?.getBoundingClientRect(); if (r) handleAddCard('hand', r) })}
         {renderHand()}
       </div>
     </>
@@ -530,40 +583,23 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
   const sections = [
     <div key="creatures" className={styles.section}>
       {creatures.map((card: Card) => (
-        <BoardCard
-          key={card.id}
-          card={card}
-          onMove={t => handleMove(card.id, t)}
-          onCastToStack={t => handleCastToStack(card.id, t)}
-          currentZone="battlefield"
-        />
+        <BoardCard key={card.id} card={card} onMove={t => handleMove(card.id, t)} onCastToStack={t => handleCastToStack(card.id, t)} currentZone="battlefield" />
       ))}
     </div>,
     <div key="nonlands" className={styles.section}>
       {nonlands.map((card: Card) => (
-        <BoardCard
-          key={card.id}
-          card={card}
-          onMove={t => handleMove(card.id, t)}
-          onCastToStack={t => handleCastToStack(card.id, t)}
-          currentZone="battlefield"
-        />
+        <BoardCard key={card.id} card={card} onMove={t => handleMove(card.id, t)} onCastToStack={t => handleCastToStack(card.id, t)} currentZone="battlefield" />
       ))}
     </div>,
     <div key="lands" className={styles.section}>
       {lands.map((card: Card) => (
-        <BoardCard
-          key={card.id}
-          card={card}
-          onMove={t => handleMove(card.id, t)}
-          onCastToStack={t => handleCastToStack(card.id, t)}
-          currentZone="battlefield"
-        />
+        <BoardCard key={card.id} card={card} onMove={t => handleMove(card.id, t)} onCastToStack={t => handleCastToStack(card.id, t)} currentZone="battlefield" />
       ))}
     </div>,
   ]
 
   const addBtnClass = isTop ? styles.addCardBtnBottom : styles.addCardBtnTop
+  const outerSide = isRight ? styles.outerMenuRight : styles.outerMenuLeft
 
   return (
     <div className={styles.playmat}>
@@ -574,8 +610,18 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
           onConfirm={handleSetupConfirm}
         />
       )}
-      {isTop && expandedPanel}
-      {isTop && strip}
+
+      <button className={`${styles.outerMenuBtn} ${outerSide}`} onClick={openOuterMenu} title="Zone actions">
+        ⋮
+      </button>
+
+      {isTop && (
+        <div className={styles.stripWrap}>
+          {strip}
+          {expanded && <div className={styles.expandedAnchorBottom}>{expandedPanel}</div>}
+        </div>
+      )}
+
       <div className={styles.battlefield}>
         <div className={styles.watermarkWrap}>
           <Image src="/tark-dark.png" alt="" fill style={{ objectFit: 'contain' }} />
@@ -592,8 +638,14 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
           + Add card
         </button>
       </div>
-      {!isTop && strip}
-      {!isTop && expandedPanel}
+
+      {!isTop && (
+        <div className={styles.stripWrap}>
+          {expanded && <div className={styles.expandedAnchorTop}>{expandedPanel}</div>}
+          {strip}
+        </div>
+      )}
+
       {showCardSearch && cardSearchRect && (
         <div style={{ position: 'fixed', top: cardSearchRect.bottom + 4, left: cardSearchRect.left, zIndex: 1000 }}>
           <CardAddSearch
@@ -603,6 +655,7 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
           />
         </div>
       )}
+
       {zoneMenu && (
         <ZoneMenu
           x={zoneMenu.x}
@@ -626,25 +679,20 @@ function CardAddSearch({ decklist, onSelect, onClose }: {
   const [loading, setLoading] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  function filterByDecklist(): string[] {
+    if (decklist.length === 0) return []
+    const q = query.toLowerCase()
+    return decklist.filter(d => d.toLowerCase().includes(q)).slice(0, 8)
+  }
+
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
-    if (query.length < 2) {
-      debounceRef.current = setTimeout(() => {
-        setSuggestions([])
-        setActiveIndex(-1)
-        setLoading(false)
-      }, 0)
-      return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
-    }
+    if (query.length < 2) { setSuggestions([]); return }
 
     if (decklist.length > 0) {
-      debounceRef.current = setTimeout(() => {
-        const q = query.toLowerCase()
-        setSuggestions(decklist.filter(d => d.toLowerCase().includes(q)).slice(0, 8))
-        setActiveIndex(-1)
-        setLoading(false)
-      }, 0)
-      return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
+      setSuggestions(filterByDecklist())
+      setActiveIndex(-1)
+      return
     }
 
     debounceRef.current = setTimeout(async () => {
@@ -660,7 +708,7 @@ function CardAddSearch({ decklist, onSelect, onClose }: {
       }
     }, 180)
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
-  }, [query, decklist])
+  }, [query])
 
   async function selectCard(name: string) {
     try {
@@ -701,7 +749,7 @@ function CardAddSearch({ decklist, onSelect, onClose }: {
           onClick={onClose}
           style={{ background: 'none', border: 'none', color: 'rgba(232,224,212,0.4)', cursor: 'pointer', fontSize: '1rem', padding: '0 4px', flexShrink: 0 }}
         >
-          x
+          ×
         </button>
       </div>
       {loading && <div className={styles.cardAddHint}>Searching...</div>}
@@ -724,16 +772,4 @@ function CardAddSearch({ decklist, onSelect, onClose }: {
       )}
     </div>
   )
-}
-
-function parseCardType(typeLine: string): Card['cardType'] {
-  if (typeLine.includes('Creature')) return 'creature'
-  if (typeLine.includes('Land')) return 'land'
-  if (typeLine.includes('Planeswalker')) return 'planeswalker'
-  if (typeLine.includes('Artifact')) return 'artifact'
-  if (typeLine.includes('Enchantment')) return 'enchantment'
-  if (typeLine.includes('Instant')) return 'instant'
-  if (typeLine.includes('Sorcery')) return 'sorcery'
-  if (typeLine.includes('Battle')) return 'battle'
-  return 'artifact'
 }

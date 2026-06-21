@@ -9,108 +9,130 @@ import styles from './BoardCard.module.css'
 import type { EditableZone } from '@/store/builderStore'
 
 interface BoardCardProps {
-	card: Card
-	onMove: (target: ZoneTarget) => void
-	onCastToStack: (type: StackType) => void
-	onToggleTapped?: () => void
-	isHovered?: boolean
-	onHoverChange?: (hovered: boolean) => void
-	currentZone: EditableZone
+  card: Card
+  onMove: (target: ZoneTarget) => void
+  onCastToStack: (type: StackType) => void
+  onToggleTapped?: () => void
+  currentZone: EditableZone
+  // compact: renders as a small "..." trigger only (used in list rows like View All),
+  // instead of the full card image with hover preview
+  compact?: boolean
 }
 
 const CARD_BACK = '/back_magic.png'
 
-export function BoardCard({ card, onMove, onCastToStack, onToggleTapped, currentZone }: BoardCardProps) {
-	const [hovered, setHovered] = useState(false)
-	const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null)
-	const cardRef = useRef<HTMLDivElement>(null)
+export function BoardCard({ card, onMove, onCastToStack, currentZone, compact }: BoardCardProps) {
+  const [hovered, setHovered] = useState(false)
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null)
+  const cardRef = useRef<HTMLDivElement>(null)
 
-	const src = card.imageUrl ?? CARD_BACK
+  const src = card.imageUrl ?? CARD_BACK
 
-	function openContextMenu(x: number, y: number) {
-		setContextMenu({ x, y })
-	}
+  function openContextMenu(x: number, y: number) {
+    setContextMenu({ x, y })
+  }
 
-	function handleContextMenu(e: React.MouseEvent) {
-		e.preventDefault()
-		e.stopPropagation()
-		openContextMenu(e.clientX, e.clientY)
-	}
+  function handleContextMenu(e: React.MouseEvent) {
+    e.preventDefault()
+    e.stopPropagation()
+    openContextMenu(e.clientX, e.clientY)
+  }
 
-	function handleDotsClick(e: React.MouseEvent) {
-		e.preventDefault()
-		e.stopPropagation()
-		const rect = cardRef.current?.getBoundingClientRect()
-		if (rect) openContextMenu(rect.left, rect.top + 24)
-	}
+  function handleDotsClick(e: React.MouseEvent) {
+    e.preventDefault()
+    e.stopPropagation()
+    const rect = cardRef.current?.getBoundingClientRect()
+    if (rect) openContextMenu(rect.left, rect.top + 24)
+  }
 
-	// Keyboard shortcuts when hovered
-	useEffect(() => {
-		if (!hovered) return
-		function handleKey(e: KeyboardEvent) {
-			if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
-			switch (e.key.toLowerCase()) {
-				case 'b': onMove('battlefield'); break
-				case 'h': onMove('hand'); break
-				case 'g': onMove('graveyard'); break
-				case 'e': onMove('exile'); break
-				case 'l': onMove('library-top'); break
-			}
-		}
-		window.addEventListener('keydown', handleKey)
-		return () => window.removeEventListener('keydown', handleKey)
-	}, [hovered, onMove])
+  // Keyboard shortcuts when hovered (full mode only)
+  useEffect(() => {
+    if (compact || !hovered) return
+    function handleKey(e: KeyboardEvent) {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+      switch (e.key.toLowerCase()) {
+        case 'b': onMove('battlefield'); break
+        case 'h': onMove('hand'); break
+        case 'g': onMove('graveyard'); break
+        case 'e': onMove('exile'); break
+        case 'l': onMove('library-top'); break
+      }
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [hovered, onMove, compact])
 
-	return (
-		<>
-			<div
-				ref={cardRef}
-				className={`${styles.card} ${card.tapped ? styles.tapped : ''}`}
-				onMouseEnter={() => setHovered(true)}
-				onMouseLeave={() => setHovered(false)}
-				onContextMenu={handleContextMenu}
-			>
-				<Image
-					src={src}
-					alt={card.name}
-					width={80}
-					height={112}
-					style={{ borderRadius: 4, display: 'block', width: 80, height: 112 }}
-				/>
+  if (compact) {
+    return (
+      <>
+        <div ref={cardRef} className={styles.compactWrap}>
+          <button className={styles.compactDotsBtn} onClick={handleDotsClick} title="Card actions">
+            &#8942;
+          </button>
+        </div>
+        {contextMenu && (
+          <CardContextMenu
+            x={contextMenu.x}
+            y={contextMenu.y}
+            cardName={card.name}
+            onMove={onMove}
+            onCastToStack={onCastToStack}
+            onClose={() => setContextMenu(null)}
+            currentZone={currentZone}
+          />
+        )}
+      </>
+    )
+  }
 
-				{/* 3-dot button top-left on hover */}
-				{hovered && (
-					<button className={styles.dotsBtn} onClick={handleDotsClick}>
-						&#8942;
-					</button>
-				)}
+  return (
+    <>
+      <div
+        ref={cardRef}
+        className={`${styles.card} ${card.tapped ? styles.tapped : ''}`}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        onContextMenu={handleContextMenu}
+      >
+        <Image
+          src={src}
+          alt={card.name}
+          width={80}
+          height={112}
+          style={{ borderRadius: 4, display: 'block', width: 80, height: 112 }}
+        />
 
-				{/* Hover preview bottom-right of screen */}
-				{hovered && card.imageUrl && createPortal(
-					<div className={styles.preview}>
-						<Image
-							src={card.imageUrl}
-							alt={card.name}
-							width={240}
-							height={336}
-							style={{ borderRadius: 8, display: 'block' }}
-						/>
-					</div>,
-					document.body
-				)}
-			</div>
+        {hovered && (
+          <button className={styles.dotsBtn} onClick={handleDotsClick}>
+            &#8942;
+          </button>
+        )}
 
-			{contextMenu && (
-				<CardContextMenu
-					x={contextMenu.x}
-					y={contextMenu.y}
-					cardName={card.name}
-					onMove={onMove}
-					onCastToStack={onCastToStack}
-					onClose={() => setContextMenu(null)}
-					currentZone={currentZone}
-				/>
-			)}
-		</>
-	)
+        {hovered && card.imageUrl && createPortal(
+          <div className={styles.preview}>
+            <Image
+              src={card.imageUrl}
+              alt={card.name}
+              width={240}
+              height={336}
+              style={{ borderRadius: 8, display: 'block' }}
+            />
+          </div>,
+          document.body
+        )}
+      </div>
+
+      {contextMenu && (
+        <CardContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          cardName={card.name}
+          onMove={onMove}
+          onCastToStack={onCastToStack}
+          onClose={() => setContextMenu(null)}
+          currentZone={currentZone}
+        />
+      )}
+    </>
+  )
 }

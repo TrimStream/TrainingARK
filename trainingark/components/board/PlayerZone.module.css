@@ -320,3 +320,162 @@
     background: rgba(201, 168, 76, 0.1);
     color: #c9a84c;
 }
+
+.stripWrap {
+  position: relative;
+}
+
+.outerMenuBtn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+  color: rgba(232, 224, 212, 0.6);
+  cursor: pointer;
+  font-size: 0.85rem;
+  padding: 6px 3px;
+  z-index: 30;
+  line-height: 1;
+  transition: color 0.1s, border-color 0.1s;
+}
+
+.outerMenuBtn:hover {
+  color: #c9a84c;
+  border-color: #c9a84c;
+}
+
+.outerMenuLeft {
+  left: 4px;
+}
+
+.outerMenuRight {
+  right: 4px;
+}
+
+.zoneAddBtn {
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+  color: rgba(232, 224, 212, 0.4);
+  cursor: pointer;
+  font-size: 0.6rem;
+  line-height: 1;
+  padding: 0 4px;
+  flex-shrink: 0;
+  transition: color 0.1s, border-color 0.1s;
+}
+
+.zoneAddBtn:hover {
+  color: #c9a84c;
+  border-color: #c9a84c;
+}
+
+/* Expanded "View All" panel — overlaps the battlefield, vertical layout */
+.expandedAnchorTop {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  z-index: 60;
+  pointer-events: none;
+}
+
+.expandedAnchorBottom {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 60;
+  pointer-events: none;
+}
+
+.expandedPanel {
+  pointer-events: auto;
+  background: #13131a;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6);
+  padding: 10px;
+  width: min(220px, 90vw);
+  max-height: 360px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 6px;
+}
+
+.expandedHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #e8e0d4;
+}
+
+.expandedTopCard {
+  flex-shrink: 0;
+}
+
+.expandedList {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.expandedRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 4px 2px;
+  border-radius: 4px;
+  transition: background 0.1s;
+}
+
+.expandedRow:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.expandedRowName {
+  font-size: 0.72rem;
+  color: rgba(232, 224, 212, 0.85);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.expandedRowDots {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.expandedRow:hover .expandedRowDots {
+  opacity: 1;
+}
+
+.emptyZoneText {
+  font-size: 0.7rem;
+  color: rgba(232, 224, 212, 0.3);
+  font-style: italic;
+}
+
+.expandedFilter {
+  background: #0f0f13;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  color: #e8e0d4;
+  font-size: 0.72rem;
+  padding: 5px 8px;
+  outline: none;
+  flex-shrink: 0;
+}
+
+.expandedFilter:focus {
+  border-color: #c9a84c;
+}

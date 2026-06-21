@@ -49,3 +49,23 @@
   border-radius: 8px;
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.7);
 }
+
+.compactWrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.compactDotsBtn {
+  background: none;
+  border: none;
+  color: rgba(232, 224, 212, 0.4);
+  cursor: pointer;
+  font-size: 0.9rem;
+  line-height: 1;
+  padding: 0 4px;
+  transition: color 0.1s;
+}
+
+.compactDotsBtn:hover {
+  color: #c9a84c;
+}
