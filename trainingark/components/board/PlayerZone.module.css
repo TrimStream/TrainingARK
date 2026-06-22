@@ -479,3 +479,60 @@
 .expandedFilter:focus {
   border-color: #c9a84c;
 }
+
+/* --- Round 2 additions: command zone aspect fix, duplicate warnings, search anchor --- */
+
+.commandWrap {
+  position: relative;
+  height: 84px;
+}
+
+.commandCardSlot {
+  position: absolute;
+  top: 0;
+}
+
+.battlefieldCardWrap {
+  position: relative;
+  display: inline-block;
+}
+
+.duplicateWarning {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #2a1414;
+  border: 1px solid rgba(224, 112, 112, 0.4);
+  border-radius: 4px;
+  padding: 3px 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  z-index: 15;
+  margin-bottom: 3px;
+}
+
+.duplicateWarning span {
+  font-size: 0.58rem;
+  color: #e07070;
+}
+
+.duplicateWarning button {
+  background: none;
+  border: 1px solid rgba(224, 112, 112, 0.4);
+  border-radius: 3px;
+  color: #e07070;
+  cursor: pointer;
+  font-size: 0.56rem;
+  padding: 1px 5px;
+}
+
+.duplicateWarning button:hover {
+  background: rgba(224, 112, 112, 0.15);
+}
+
+.searchAnchor {
+  pointer-events: auto;
+}

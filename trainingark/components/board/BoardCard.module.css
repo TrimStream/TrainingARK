@@ -69,3 +69,28 @@
 .compactDotsBtn:hover {
   color: #c9a84c;
 }
+
+.removeBtn {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 18px;
+  height: 18px;
+  background: rgba(0, 0, 0, 0.75);
+  border: none;
+  border-radius: 3px;
+  color: rgba(224, 112, 112, 0.85);
+  cursor: pointer;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  line-height: 1;
+  padding: 0;
+}
+
+.removeBtn:hover {
+  background: rgba(0, 0, 0, 0.95);
+  color: #e07070;
+}

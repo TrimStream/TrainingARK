@@ -61,3 +61,12 @@
   padding: 1px 5px;
   flex-shrink: 0;
 }
+
+.menuItemDanger {
+  color: rgba(224, 112, 112, 0.85);
+}
+
+.menuItemDanger:hover {
+  background: rgba(224, 112, 112, 0.08);
+  color: #e07070;
+}

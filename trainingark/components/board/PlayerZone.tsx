@@ -51,11 +51,24 @@ function parseCardType(typeLine: string): Card['cardType'] {
   return 'artifact'
 }
 
+// Strips Moxfield-style export suffixes like "(FDN) 160" or "(2X2) 45" from a pasted
+// decklist line, leaving just the card name for matching/searching.
+// Also strips a leading quantity like "1 ".
+export function cleanDecklistLine(rawLine: string): string {
+  let line = rawLine.trim()
+  // Strip leading quantity: "1 Card Name" -> "Card Name"
+  line = line.replace(/^\d+\s+/, '')
+  // Strip trailing set code + collector number: "Card Name (FDN) 160" -> "Card Name"
+  line = line.replace(/\s*\([A-Za-z0-9]{2,6}\)\s*[\dA-Za-z-]*\s*$/, '')
+  return line.trim()
+}
+
 export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps) {
   const {
     players, updatePlayer, confirmSetup, setupComplete,
     moveCard, addCard, castToStack, setLife, setTax, setTaxPartner,
-    decklists, drawCard, shuffleLibrary,
+    decklists, drawCard, shuffleLibrary, removeCard, createTokenCopy,
+    isDuplicate, dismissDuplicateWarning, dismissedDuplicateWarnings,
   } = useBuilderStore()
 
   const player = players?.[playerIndex]
@@ -64,7 +77,7 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
 
   const [expanded, setExpanded] = useState<ExpandableZone | null>(null)
   const [filterText, setFilterText] = useState('')
-  const [showCardSearch, setShowCardSearch] = useState<EditableZone | null>(null)
+  const [showCardSearch, setShowCardSearch] = useState<{ zone: EditableZone; tokensOnly?: boolean } | null>(null)
   const [cardSearchRect, setCardSearchRect] = useState<DOMRect | null>(null)
   const [editingLife, setEditingLife] = useState(false)
   const [lifeInput, setLifeInput] = useState('')
@@ -72,6 +85,10 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
   const [taxInput, setTaxInput] = useState('')
   const [zoneMenu, setZoneMenu] = useState<{ x: number; y: number; items: ZoneMenuItem[] } | null>(null)
   const addBtnRef = useRef<HTMLButtonElement>(null)
+  const handAddBtnRef = useRef<HTMLButtonElement>(null)
+  const graveyardAddBtnRef = useRef<HTMLButtonElement>(null)
+  const exileAddBtnRef = useRef<HTMLButtonElement>(null)
+  const libraryAddBtnRef = useRef<HTMLButtonElement>(null)
 
   const isTop = position === 'top-left' || position === 'top-right'
   const isRight = position === 'top-right' || position === 'bottom-right'
@@ -112,21 +129,33 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
     }
   }
 
-  function handleAddCard(zone: EditableZone, rect: DOMRect) {
-    setShowCardSearch(zone)
+  function handleRemove(cardId: string) {
+    removeCard(playerIndex, cardId)
+  }
+
+  function handleTokenCopy(cardId: string) {
+    createTokenCopy(playerIndex, cardId)
+  }
+
+  function handleAddCard(zone: EditableZone, rect: DOMRect, tokensOnly?: boolean) {
+    setShowCardSearch({ zone, tokensOnly })
     setCardSearchRect(rect)
   }
 
   function handleCardSelected(card: Card) {
     if (!showCardSearch) return
-    if (decklist.length > 0 && !decklist.includes(card.name)) return
-    addCard(playerIndex, showCardSearch, card)
+    const { zone } = showCardSearch
+    if (decklist.length > 0 && !decklist.includes(card.name) && !card.isToken) return
+    addCard(playerIndex, zone, card)
     setShowCardSearch(null)
     setCardSearchRect(null)
   }
 
   function handleSetupConfirm(partial: Partial<Player>, _commanderNames: string[], dl: string[]) {
     if (!player) return
+    // Parse pasted decklist lines to plain card names, stripping Moxfield-style
+    // "(SET) number" suffixes so they're searchable later.
+    const cleanedDl = dl.map(cleanDecklistLine).filter(Boolean)
     const updated: Player = {
       ...(player as Player),
       ...partial,
@@ -137,7 +166,7 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
       commanderTax: partial.commanderTax ?? 0,
     }
     updatePlayer(playerIndex, updated)
-    confirmSetup(playerIndex, dl)
+    confirmSetup(playerIndex, cleanedDl)
   }
 
   function commitLife() {
@@ -186,7 +215,7 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
       {
         label: 'Add Token', action: () => {
           const rect = addBtnRef.current?.getBoundingClientRect()
-          if (rect) handleAddCard('battlefield', rect)
+          if (rect) handleAddCard('battlefield', rect, true)
         },
       },
     ]
@@ -197,8 +226,8 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
   const p: Player = player
 
   const handCount = zoneCount('hand')
-  const handRevealed = revealAll || player.zones.hand.revealed
-  const handCards = player.zones.hand.cards
+  const handRevealed = revealAll || p.zones.hand.revealed
+  const handCards = p.zones.hand.cards
 
   function renderHand() {
     const count = handRevealed && handCards.length > 0 ? handCards.length : handCount
@@ -217,6 +246,8 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
                   card={card}
                   onMove={t => handleMove(card.id, t)}
                   onCastToStack={t => handleCastToStack(card.id, t)}
+                  onRemove={() => handleRemove(card.id)}
+                  showRemoveX
                   currentZone="hand"
                 />
               </div>
@@ -249,6 +280,8 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
           card={revealed ? topCard : { ...topCard, imageUrl: undefined }}
           onMove={t => handleMove(topCard.id, t)}
           onCastToStack={t => handleCastToStack(topCard.id, t)}
+          onRemove={() => handleRemove(topCard.id)}
+          showRemoveX
           currentZone={zone}
         />
       </div>
@@ -256,14 +289,14 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
   }
 
   function renderCommandZone() {
-    const cards = (player as Player).zones.command.cards
+    const cards = p.zones.command.cards
     if (cards.length === 0) {
       return <div className={styles.emptyPile} style={{ width: CARD_W, height: CARD_H }} />
     }
     return (
-      <div style={{ position: 'relative', width: cards.length === 1 ? CARD_W : CARD_W + 16, height: CARD_H }}>
+      <div className={styles.commandWrap} style={{ width: cards.length === 1 ? CARD_W : CARD_W + 16 }}>
         {cards.map((card: Card, i: number) => (
-          <div key={card.id} style={{ position: 'absolute', left: i * 16, top: 0, zIndex: i }}>
+          <div key={card.id} className={styles.commandCardSlot} style={{ left: i * 16, zIndex: i }}>
             <BoardCard
               card={card}
               onMove={t => handleMove(card.id, t)}
@@ -277,9 +310,9 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
   }
 
   function getExpandedCards(): Card[] {
-    if (!expanded || !player) return []
+    if (!expanded) return []
     if (expanded === 'hand') return handRevealed ? handCards : []
-    return player.zones[expanded].cards
+    return p.zones[expanded].cards
   }
 
   const expandedCardsRaw = getExpandedCards()
@@ -288,6 +321,8 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
     : expandedCardsRaw
   const topExpandedCard = expandedCards[expandedCards.length - 1]
 
+  // View All panel: large top-card preview, then a plain vertical list of NAMES ONLY
+  // (matching the Moxfield reference) -- no thumbnails in the list rows.
   const expandedPanel = expanded && (
     <div className={styles.expandedPanel}>
       <div className={styles.expandedHeader}>
@@ -318,6 +353,7 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
               card={card}
               onMove={t => handleMove(card.id, t)}
               onCastToStack={t => handleCastToStack(card.id, t)}
+              onRemove={() => handleRemove(card.id)}
               currentZone={expanded}
               compact
             />
@@ -348,10 +384,10 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
   ) : (
     <span
       className={styles.playerLife}
-      onClick={() => { setLifeInput(String(player.life)); setEditingLife(true) }}
+      onClick={() => { setLifeInput(String(p.life)); setEditingLife(true) }}
       title="Click to edit"
     >
-      {player.life}
+      {p.life}
     </span>
   )
 
@@ -422,23 +458,27 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
 
   const playerMetaBlock = (
     <div className={styles.playerMeta}>
-      <span className={styles.playerName}>{player.name}</span>
+      <span className={styles.playerName}>{p.name}</span>
       {lifeDisplay}
       {renderTax()}
     </div>
   )
 
-  function zoneHeader(label: string, count: number, expandKey: ExpandableZone | null, menuItems: ZoneMenuItem[], onAdd?: () => void) {
+  function zoneHeader(
+    label: string,
+    count: number,
+    expandKey: ExpandableZone | null,
+    menuItems: ZoneMenuItem[],
+    addRef?: React.RefObject<HTMLButtonElement | null>,
+    onAdd?: () => void,
+  ) {
     return (
       <div className={styles.zoneLabelRow}>
-        <span
-          className={styles.zoneLabelText}
-          onClick={() => expandKey && toggle(expandKey)}
-        >
+        <span className={styles.zoneLabelText} onClick={() => expandKey && toggle(expandKey)}>
           {label} ({count})
         </span>
         {onAdd && (
-          <button className={styles.zoneAddBtn} onClick={e => { e.stopPropagation(); onAdd() }} title={`Add card to ${label}`}>+</button>
+          <button ref={addRef} className={styles.zoneAddBtn} onClick={e => { e.stopPropagation(); onAdd() }} title={`Add card to ${label}`}>+</button>
         )}
         <button className={styles.zoneArrow} onClick={e => openZoneMenu(e, menuItems)}>▼</button>
       </div>
@@ -454,7 +494,7 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
           { label: 'Move all to Graveyard', action: () => moveAllFromZone('hand', 'graveyard') },
           { label: 'Move all to Exile', action: () => moveAllFromZone('hand', 'exile') },
           { label: 'Discard a Card Randomly', action: discardRandom, danger: true },
-        ], () => { const r = addBtnRef.current?.getBoundingClientRect(); if (r) handleAddCard('hand', r) })}
+        ], handAddBtnRef, () => { const r = handAddBtnRef.current?.getBoundingClientRect(); if (r) handleAddCard('hand', r) })}
         {renderHand()}
       </div>
       <div className={styles.stripDivider} />
@@ -464,7 +504,7 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
           { label: 'Move all to Graveyard', action: () => moveAllFromZone('library', 'graveyard') },
           { label: 'Move all to Exile', action: () => moveAllFromZone('library', 'exile') },
           { label: 'Shuffle', action: () => shuffleLibrary(playerIndex) },
-        ], () => { const r = addBtnRef.current?.getBoundingClientRect(); if (r) handleAddCard('library', r) })}
+        ], libraryAddBtnRef, () => { const r = libraryAddBtnRef.current?.getBoundingClientRect(); if (r) handleAddCard('library', r) })}
         {renderPile([], zoneCount('library'), false, 'library')}
       </div>
       <div className={styles.stripDivider} />
@@ -475,8 +515,8 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
           { label: 'Move all to Library', action: () => moveAllFromZone('graveyard', 'library') },
           { label: 'Move all to Bottom of Library', action: () => moveAllFromZone('graveyard', 'library') },
           { label: 'Move all to Exile', action: () => moveAllFromZone('graveyard', 'exile') },
-        ], () => { const r = addBtnRef.current?.getBoundingClientRect(); if (r) handleAddCard('graveyard', r) })}
-        {renderPile(player.zones.graveyard.cards, zoneCount('graveyard'), true, 'graveyard')}
+        ], graveyardAddBtnRef, () => { const r = graveyardAddBtnRef.current?.getBoundingClientRect(); if (r) handleAddCard('graveyard', r) })}
+        {renderPile(p.zones.graveyard.cards, zoneCount('graveyard'), true, 'graveyard')}
       </div>
       <div className={styles.stripDivider} />
       <div className={styles.zoneSection}>
@@ -487,8 +527,8 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
           { label: 'Move all to Graveyard', action: () => moveAllFromZone('exile', 'graveyard') },
           { label: 'Move all to Library', action: () => moveAllFromZone('exile', 'library') },
           { label: 'Move all to Bottom of Library', action: () => moveAllFromZone('exile', 'library') },
-        ], () => { const r = addBtnRef.current?.getBoundingClientRect(); if (r) handleAddCard('exile', r) })}
-        {renderPile(player.zones.exile.cards, zoneCount('exile'), true, 'exile')}
+        ], exileAddBtnRef, () => { const r = exileAddBtnRef.current?.getBoundingClientRect(); if (r) handleAddCard('exile', r) })}
+        {renderPile(p.zones.exile.cards, zoneCount('exile'), true, 'exile')}
       </div>
       <div className={styles.stripDivider} />
       <div className={styles.zoneSection}>
@@ -517,8 +557,8 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
           { label: 'Move all to Graveyard', action: () => moveAllFromZone('exile', 'graveyard') },
           { label: 'Move all to Library', action: () => moveAllFromZone('exile', 'library') },
           { label: 'Move all to Bottom of Library', action: () => moveAllFromZone('exile', 'library') },
-        ], () => { const r = addBtnRef.current?.getBoundingClientRect(); if (r) handleAddCard('exile', r) })}
-        {renderPile(player.zones.exile.cards, zoneCount('exile'), true, 'exile')}
+        ], exileAddBtnRef, () => { const r = exileAddBtnRef.current?.getBoundingClientRect(); if (r) handleAddCard('exile', r) })}
+        {renderPile(p.zones.exile.cards, zoneCount('exile'), true, 'exile')}
       </div>
       <div className={styles.stripDivider} />
       <div className={styles.zoneSection}>
@@ -528,8 +568,8 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
           { label: 'Move all to Library', action: () => moveAllFromZone('graveyard', 'library') },
           { label: 'Move all to Bottom of Library', action: () => moveAllFromZone('graveyard', 'library') },
           { label: 'Move all to Exile', action: () => moveAllFromZone('graveyard', 'exile') },
-        ], () => { const r = addBtnRef.current?.getBoundingClientRect(); if (r) handleAddCard('graveyard', r) })}
-        {renderPile(player.zones.graveyard.cards, zoneCount('graveyard'), true, 'graveyard')}
+        ], graveyardAddBtnRef, () => { const r = graveyardAddBtnRef.current?.getBoundingClientRect(); if (r) handleAddCard('graveyard', r) })}
+        {renderPile(p.zones.graveyard.cards, zoneCount('graveyard'), true, 'graveyard')}
       </div>
       <div className={styles.stripDivider} />
       <div className={styles.zoneSection}>
@@ -538,7 +578,7 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
           { label: 'Move all to Graveyard', action: () => moveAllFromZone('library', 'graveyard') },
           { label: 'Move all to Exile', action: () => moveAllFromZone('library', 'exile') },
           { label: 'Shuffle', action: () => shuffleLibrary(playerIndex) },
-        ], () => { const r = addBtnRef.current?.getBoundingClientRect(); if (r) handleAddCard('library', r) })}
+        ], libraryAddBtnRef, () => { const r = libraryAddBtnRef.current?.getBoundingClientRect(); if (r) handleAddCard('library', r) })}
         {renderPile([], zoneCount('library'), false, 'library')}
       </div>
       <div className={styles.stripDivider} />
@@ -549,7 +589,7 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
           { label: 'Move all to Graveyard', action: () => moveAllFromZone('hand', 'graveyard') },
           { label: 'Move all to Exile', action: () => moveAllFromZone('hand', 'exile') },
           { label: 'Discard a Card Randomly', action: discardRandom, danger: true },
-        ], () => { const r = addBtnRef.current?.getBoundingClientRect(); if (r) handleAddCard('hand', r) })}
+        ], handAddBtnRef, () => { const r = handAddBtnRef.current?.getBoundingClientRect(); if (r) handleAddCard('hand', r) })}
         {renderHand()}
       </div>
     </>
@@ -573,28 +613,45 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
     </div>
   )
 
-  const battlefield = player.zones.battlefield.cards
+  const battlefield = p.zones.battlefield.cards
   const creatures = battlefield.filter((c: Card) => c.cardType === 'creature')
   const nonlands = battlefield.filter((c: Card) =>
     c.cardType === 'artifact' || c.cardType === 'enchantment' || c.cardType === 'planeswalker'
   )
   const lands = battlefield.filter((c: Card) => c.cardType === 'land')
 
+  function renderBattlefieldCard(card: Card) {
+    const dup = isDuplicate(playerIndex, card.name, card.id) && !dismissedDuplicateWarnings.has(card.id)
+    return (
+      <div key={card.id} className={styles.battlefieldCardWrap}>
+        {dup && (
+          <div className={styles.duplicateWarning}>
+            <span>Duplicate non-token card</span>
+            <button onClick={() => dismissDuplicateWarning(card.id)}>Dismiss</button>
+          </div>
+        )}
+        <BoardCard
+          card={card}
+          onMove={t => handleMove(card.id, t)}
+          onCastToStack={t => handleCastToStack(card.id, t)}
+          onRemove={() => handleRemove(card.id)}
+          onCreateTokenCopy={() => handleTokenCopy(card.id)}
+          showRemoveX
+          currentZone="battlefield"
+        />
+      </div>
+    )
+  }
+
   const sections = [
     <div key="creatures" className={styles.section}>
-      {creatures.map((card: Card) => (
-        <BoardCard key={card.id} card={card} onMove={t => handleMove(card.id, t)} onCastToStack={t => handleCastToStack(card.id, t)} currentZone="battlefield" />
-      ))}
+      {creatures.map(renderBattlefieldCard)}
     </div>,
     <div key="nonlands" className={styles.section}>
-      {nonlands.map((card: Card) => (
-        <BoardCard key={card.id} card={card} onMove={t => handleMove(card.id, t)} onCastToStack={t => handleCastToStack(card.id, t)} currentZone="battlefield" />
-      ))}
+      {nonlands.map(renderBattlefieldCard)}
     </div>,
     <div key="lands" className={styles.section}>
-      {lands.map((card: Card) => (
-        <BoardCard key={card.id} card={card} onMove={t => handleMove(card.id, t)} onCastToStack={t => handleCastToStack(card.id, t)} currentZone="battlefield" />
-      ))}
+      {lands.map(renderBattlefieldCard)}
     </div>,
   ]
 
@@ -647,9 +704,18 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
       )}
 
       {showCardSearch && cardSearchRect && (
-        <div style={{ position: 'fixed', top: cardSearchRect.bottom + 4, left: cardSearchRect.left, zIndex: 1000 }}>
+        <div
+          className={styles.searchAnchor}
+          style={{
+            position: 'fixed',
+            top: Math.min(cardSearchRect.bottom + 4, window.innerHeight - 260),
+            left: Math.min(Math.max(cardSearchRect.left, 8), window.innerWidth - 240),
+            zIndex: 1000,
+          }}
+        >
           <CardAddSearch
             decklist={decklist}
+            tokensOnly={showCardSearch.tokensOnly}
             onSelect={handleCardSelected}
             onClose={() => setShowCardSearch(null)}
           />
@@ -668,8 +734,9 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
   )
 }
 
-function CardAddSearch({ decklist, onSelect, onClose }: {
+function CardAddSearch({ decklist, tokensOnly, onSelect, onClose }: {
   decklist: string[]
+  tokensOnly?: boolean
   onSelect: (card: Card) => void
   onClose: () => void
 }) {
@@ -688,6 +755,26 @@ function CardAddSearch({ decklist, onSelect, onClose }: {
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
     if (query.length < 2) { setSuggestions([]); return }
+
+    // Token search and decklist-restricted search both bypass the generic
+    // autocomplete and hit Scryfall's full search syntax (or the local list) directly.
+    if (tokensOnly) {
+      debounceRef.current = setTimeout(async () => {
+        setLoading(true)
+        try {
+          const res = await fetch(`https://api.scryfall.com/cards/search?q=${encodeURIComponent(`is:token ${query}`)}&unique=cards`)
+          if (!res.ok) { setSuggestions([]); return }
+          const data = await res.json()
+          setSuggestions((data.data ?? []).slice(0, 8).map((c: { name: string }) => c.name))
+          setActiveIndex(-1)
+        } catch {
+          setSuggestions([])
+        } finally {
+          setLoading(false)
+        }
+      }, 200)
+      return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
+    }
 
     if (decklist.length > 0) {
       setSuggestions(filterByDecklist())
@@ -708,18 +795,24 @@ function CardAddSearch({ decklist, onSelect, onClose }: {
       }
     }, 180)
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
-  }, [query])
+  }, [query, tokensOnly])
 
   async function selectCard(name: string) {
     try {
-      const res = await fetch(`https://api.scryfall.com/cards/named?exact=${encodeURIComponent(name)}`)
+      const url = tokensOnly
+        ? `https://api.scryfall.com/cards/search?q=${encodeURIComponent(`is:token !"${name}"`)}&unique=cards`
+        : `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(name)}`
+      const res = await fetch(url)
       if (!res.ok) return
       const data = await res.json()
+      const cardData = tokensOnly ? data.data?.[0] : data
+      if (!cardData) return
       const card: Card = {
-        id: data.id,
-        name: data.name,
-        imageUrl: data.image_uris?.normal ?? data.card_faces?.[0]?.image_uris?.normal,
-        cardType: parseCardType(data.type_line ?? ''),
+        id: cardData.id,
+        name: cardData.name,
+        imageUrl: cardData.image_uris?.normal ?? cardData.card_faces?.[0]?.image_uris?.normal,
+        cardType: parseCardType(cardData.type_line ?? ''),
+        isToken: tokensOnly ? true : undefined,
       }
       onSelect(card)
     } catch { /* ignore */ }
@@ -730,7 +823,7 @@ function CardAddSearch({ decklist, onSelect, onClose }: {
       <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}>
         <input
           className={styles.cardAddInput}
-          placeholder={decklist.length > 0 ? 'Search decklist...' : 'Search all cards...'}
+          placeholder={tokensOnly ? 'Search tokens...' : decklist.length > 0 ? 'Search decklist...' : 'Search all cards...'}
           value={query}
           onChange={e => setQuery(e.target.value)}
           onKeyDown={e => {

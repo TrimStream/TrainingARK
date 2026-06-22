@@ -12,16 +12,19 @@ interface BoardCardProps {
   card: Card
   onMove: (target: ZoneTarget) => void
   onCastToStack: (type: StackType) => void
+  onRemove?: () => void
+  onCreateTokenCopy?: () => void
   onToggleTapped?: () => void
   currentZone: EditableZone
-  // compact: renders as a small "..." trigger only (used in list rows like View All),
-  // instead of the full card image with hover preview
   compact?: boolean
+  // showRemoveX: shows a small × in the corner for quick removal, in addition to
+  // the "Remove from Game" context menu option.
+  showRemoveX?: boolean
 }
 
 const CARD_BACK = '/back_magic.png'
 
-export function BoardCard({ card, onMove, onCastToStack, currentZone, compact }: BoardCardProps) {
+export function BoardCard({ card, onMove, onCastToStack, onRemove, onCreateTokenCopy, currentZone, compact, showRemoveX }: BoardCardProps) {
   const [hovered, setHovered] = useState(false)
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null)
   const cardRef = useRef<HTMLDivElement>(null)
@@ -45,7 +48,6 @@ export function BoardCard({ card, onMove, onCastToStack, currentZone, compact }:
     if (rect) openContextMenu(rect.left, rect.top + 24)
   }
 
-  // Keyboard shortcuts when hovered (full mode only)
   useEffect(() => {
     if (compact || !hovered) return
     function handleKey(e: KeyboardEvent) {
@@ -62,6 +64,22 @@ export function BoardCard({ card, onMove, onCastToStack, currentZone, compact }:
     return () => window.removeEventListener('keydown', handleKey)
   }, [hovered, onMove, compact])
 
+  const contextMenuEl = contextMenu && (
+    <CardContextMenu
+      x={contextMenu.x}
+      y={contextMenu.y}
+      cardName={card.name}
+      cardType={card.cardType}
+      isToken={card.isToken}
+      onMove={onMove}
+      onCastToStack={onCastToStack}
+      onRemove={() => onRemove?.()}
+      onCreateTokenCopy={onCreateTokenCopy}
+      onClose={() => setContextMenu(null)}
+      currentZone={currentZone}
+    />
+  )
+
   if (compact) {
     return (
       <>
@@ -70,17 +88,7 @@ export function BoardCard({ card, onMove, onCastToStack, currentZone, compact }:
             &#8942;
           </button>
         </div>
-        {contextMenu && (
-          <CardContextMenu
-            x={contextMenu.x}
-            y={contextMenu.y}
-            cardName={card.name}
-            onMove={onMove}
-            onCastToStack={onCastToStack}
-            onClose={() => setContextMenu(null)}
-            currentZone={currentZone}
-          />
-        )}
+        {contextMenuEl}
       </>
     )
   }
@@ -108,6 +116,16 @@ export function BoardCard({ card, onMove, onCastToStack, currentZone, compact }:
           </button>
         )}
 
+        {hovered && showRemoveX && onRemove && (
+          <button
+            className={styles.removeBtn}
+            onClick={e => { e.preventDefault(); e.stopPropagation(); onRemove() }}
+            title="Remove from game"
+          >
+            ×
+          </button>
+        )}
+
         {hovered && card.imageUrl && createPortal(
           <div className={styles.preview}>
             <Image
@@ -122,17 +140,7 @@ export function BoardCard({ card, onMove, onCastToStack, currentZone, compact }:
         )}
       </div>
 
-      {contextMenu && (
-        <CardContextMenu
-          x={contextMenu.x}
-          y={contextMenu.y}
-          cardName={card.name}
-          onMove={onMove}
-          onCastToStack={onCastToStack}
-          onClose={() => setContextMenu(null)}
-          currentZone={currentZone}
-        />
-      )}
+      {contextMenuEl}
     </>
   )
 }

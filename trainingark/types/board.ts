@@ -16,6 +16,7 @@ export interface Card {
   tapped?: boolean
   faceDown?: boolean
   counters?: Record<string, number>
+  isToken?: boolean
 }
 
 export interface Zone {
@@ -47,6 +48,7 @@ export interface StackItem {
   label: string
   type: 'cast' | 'triggered' | 'activated'
   imageUrl?: string
+  cardType?: CardType
 }
 
 export type PlayerPosition = 'bottom-right' | 'bottom-left' | 'top-left' | 'top-right'
