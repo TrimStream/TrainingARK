@@ -13,6 +13,7 @@ export type ZoneTarget =
   | 'exile'
   | 'library-top'
   | 'library-bottom'
+  | 'command'
 
 export type StackType = 'cast' | 'triggered' | 'activated'
 
@@ -22,6 +23,7 @@ interface CardContextMenuProps {
   cardName: string
   cardType: Card['cardType']
   isToken?: boolean
+  isCommander?: boolean
   onMove: (target: ZoneTarget) => void
   onCastToStack: (type: StackType) => void
   onRemove: () => void
@@ -31,7 +33,8 @@ interface CardContextMenuProps {
 }
 
 export function CardContextMenu({
-  x, y, cardName, cardType, onMove, onCastToStack, onRemove, onCreateTokenCopy, onClose, currentZone,
+  x, y, cardName, cardType, isToken, isCommander,
+  onMove, onCastToStack, onRemove, onCreateTokenCopy, onClose, currentZone,
 }: CardContextMenuProps) {
   const ref = useRef<HTMLDivElement>(null)
 
@@ -51,14 +54,11 @@ export function CardContextMenu({
   }, [onClose])
 
   const menuWidth = 200
-  const menuHeight = 320
+  const menuHeight = 340
   const adjustedX = x + menuWidth > window.innerWidth ? x - menuWidth : x
   const adjustedY = y + menuHeight > window.innerHeight ? y - menuHeight : y
 
-  // Lands never use the stack -- they just move straight to the battlefield.
   const isLand = cardType === 'land'
-  // From the battlefield, a permanent is already in play -- only its triggered/activated
-  // abilities make sense, not "cast" again.
   const onBattlefield = currentZone === 'battlefield'
 
   const menu = (
@@ -96,9 +96,12 @@ export function CardContextMenu({
           Move to Bottom of Library
         </button>
       )}
+      {isCommander && currentZone !== 'command' && (
+        <button className={styles.menuItem} onClick={() => { onMove('command'); onClose() }}>
+          Move to Command Zone
+        </button>
+      )}
 
-      {/* Stack actions -- lands never go through the stack. Battlefield cards only get
-          triggered/activated, since they're not being "cast" again. */}
       {!isLand && (
         <>
           <div className={styles.menuDivider} />

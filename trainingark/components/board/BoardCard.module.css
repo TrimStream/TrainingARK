@@ -94,3 +94,47 @@
   background: rgba(0, 0, 0, 0.95);
   color: #e07070;
 }
+
+.stackBadge {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  background: rgba(0, 0, 0, 0.78);
+  color: #e8c96a;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 3px;
+  pointer-events: none;
+  z-index: 3;
+  line-height: 1.4;
+}
+
+.tokenControls {
+  position: absolute;
+  bottom: 4px;
+  left: 4px;
+  display: flex;
+  gap: 2px;
+  z-index: 4;
+}
+
+.tokenBtn {
+  background: rgba(0, 0, 0, 0.78);
+  border: 1px solid rgba(232, 201, 106, 0.5);
+  color: #e8c96a;
+  font-size: 0.85rem;
+  width: 20px;
+  height: 20px;
+  border-radius: 3px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  line-height: 1;
+}
+
+.tokenBtn:hover {
+  background: rgba(232, 201, 106, 0.2);
+}

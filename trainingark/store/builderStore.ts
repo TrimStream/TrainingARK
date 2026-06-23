@@ -20,6 +20,8 @@ interface BuilderState {
   silentAddCard: (playerIndex: number, zone: EditableZone, card: Card) => void
   removeCard: (playerIndex: number, cardId: string) => void
   createTokenCopy: (playerIndex: number, cardId: string) => void
+  incrementToken: (playerIndex: number, cardId: string) => void
+  decrementToken: (playerIndex: number, cardId: string) => void
   castToStack: (playerIndex: number, cardId: string, fromZone: EditableZone, type: StackItem['type']) => void
   resolveStack: (itemId: string) => void
   removeFromStack: (itemId: string) => void
@@ -149,8 +151,6 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
     set({ players: updated })
   },
 
-  // Fix #7: use findIndex + splice so only the first matching card is removed,
-  // not all cards that share a Scryfall UUID.
   moveCard: (playerIndex, cardId, fromZone, toZone) => {
     const state = get()
     if (!state.players) return
@@ -188,6 +188,28 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
     pushHistory(state)
 
     const player = state.players[playerIndex]
+
+    // Token stacking: if adding a token to the battlefield and a same-name token
+    // already exists there, increment its stackCount instead of adding a new card.
+    if (card.isToken && zone === 'battlefield') {
+      const existingIdx = player.zones.battlefield.cards.findIndex(
+        c => c.isToken && c.name === card.name
+      )
+      if (existingIdx !== -1) {
+        const updatedCards = [...player.zones.battlefield.cards]
+        const newCount = (updatedCards[existingIdx].stackCount ?? 1) + 1
+        updatedCards[existingIdx] = { ...updatedCards[existingIdx], stackCount: newCount }
+        const updated = [...state.players] as [Player, Player, Player, Player]
+        updated[playerIndex] = {
+          ...player,
+          zones: { ...player.zones, battlefield: { ...player.zones.battlefield, cards: updatedCards } },
+        }
+        const logLine = `${player.name} creates another ${card.name} token (×${newCount}).`
+        set({ players: updated, logLines: state.scenarioStarted ? [...state.logLines, logLine] : state.logLines })
+        return
+      }
+    }
+
     const zoneData = player.zones[zone]
     const count = zoneData.cardCount ?? zoneData.cards.length
     const libCount = player.zones.library.cardCount ?? player.zones.library.cards.length
@@ -225,8 +247,6 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
     set({ players: updated })
   },
 
-  // Fix #7: splice at first matching index instead of filter.
-  // Fix #6: no log line for removal.
   removeCard: (playerIndex, cardId) => {
     const state = get()
     if (!state.players) return
@@ -256,6 +276,8 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
     set({ players: updated })
   },
 
+  // Token stacking: if a same-name token already exists on the battlefield,
+  // increment its count instead of adding a duplicate card object.
   createTokenCopy: (playerIndex, cardId) => {
     const state = get()
     if (!state.players) return
@@ -263,28 +285,104 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
     const player = state.players[playerIndex]
     const source = player.zones.battlefield.cards.find((c: Card) => c.id === cardId)
     if (!source) return
-    const tokenCopy: Card = {
-      ...source,
-      id: `token-${Date.now()}`,
-      isToken: true,
-      tapped: false,
-    }
+
+    const existingIdx = player.zones.battlefield.cards.findIndex(
+      c => c.isToken && c.name === source.name && c.id !== cardId
+    )
+
     const updated = [...state.players] as [Player, Player, Player, Player]
-    updated[playerIndex] = {
-      ...player,
-      zones: {
-        ...player.zones,
-        battlefield: { ...player.zones.battlefield, cards: [...player.zones.battlefield.cards, tokenCopy] },
-      },
+    let logLine: string
+
+    if (existingIdx !== -1) {
+      const updatedCards = [...player.zones.battlefield.cards]
+      const newCount = (updatedCards[existingIdx].stackCount ?? 1) + 1
+      updatedCards[existingIdx] = { ...updatedCards[existingIdx], stackCount: newCount }
+      updated[playerIndex] = {
+        ...player,
+        zones: { ...player.zones, battlefield: { ...player.zones.battlefield, cards: updatedCards } },
+      }
+      logLine = `${player.name} creates another token copy of ${source.name} (×${newCount}).`
+    } else {
+      const tokenCopy: Card = {
+        ...source,
+        id: `token-${Date.now()}`,
+        isToken: true,
+        tapped: false,
+        stackCount: 1,
+      }
+      updated[playerIndex] = {
+        ...player,
+        zones: {
+          ...player.zones,
+          battlefield: { ...player.zones.battlefield, cards: [...player.zones.battlefield.cards, tokenCopy] },
+        },
+      }
+      logLine = `${player.name} creates a token copy of ${source.name}.`
     }
-    const logLine = `${player.name} creates a token copy of ${source.name}.`
+
     set({
       players: updated,
       logLines: state.scenarioStarted ? [...state.logLines, logLine] : state.logLines,
     })
   },
 
-  // Fix #9: triggered/activated abilities stay on the battlefield — only 'cast' removes the source card.
+  incrementToken: (playerIndex, cardId) => {
+    const state = get()
+    if (!state.players) return
+    pushHistory(state)
+    const player = state.players[playerIndex]
+    const cardIdx = player.zones.battlefield.cards.findIndex(c => c.id === cardId)
+    if (cardIdx === -1) return
+    const card = player.zones.battlefield.cards[cardIdx]
+    const newCount = (card.stackCount ?? 1) + 1
+    const updatedCards = [...player.zones.battlefield.cards]
+    updatedCards[cardIdx] = { ...card, stackCount: newCount }
+    const updated = [...state.players] as [Player, Player, Player, Player]
+    updated[playerIndex] = {
+      ...player,
+      zones: { ...player.zones, battlefield: { ...player.zones.battlefield, cards: updatedCards } },
+    }
+    const logLine = `${player.name} creates another ${card.name} token (×${newCount}).`
+    set({
+      players: updated,
+      logLines: state.scenarioStarted ? [...state.logLines, logLine] : state.logLines,
+    })
+  },
+
+  decrementToken: (playerIndex, cardId) => {
+    const state = get()
+    if (!state.players) return
+    pushHistory(state)
+    const player = state.players[playerIndex]
+    const cardIdx = player.zones.battlefield.cards.findIndex(c => c.id === cardId)
+    if (cardIdx === -1) return
+    const card = player.zones.battlefield.cards[cardIdx]
+    const currentCount = card.stackCount ?? 1
+    const updated = [...state.players] as [Player, Player, Player, Player]
+
+    if (currentCount <= 1) {
+      const updatedCards = [...player.zones.battlefield.cards]
+      updatedCards.splice(cardIdx, 1)
+      updated[playerIndex] = {
+        ...player,
+        zones: { ...player.zones, battlefield: { ...player.zones.battlefield, cards: updatedCards } },
+      }
+      set({ players: updated })
+    } else {
+      const updatedCards = [...player.zones.battlefield.cards]
+      updatedCards[cardIdx] = { ...card, stackCount: currentCount - 1 }
+      updated[playerIndex] = {
+        ...player,
+        zones: { ...player.zones, battlefield: { ...player.zones.battlefield, cards: updatedCards } },
+      }
+      const logLine = `${player.name} removes a ${card.name} token (×${currentCount - 1}).`
+      set({
+        players: updated,
+        logLines: state.scenarioStarted ? [...state.logLines, logLine] : state.logLines,
+      })
+    }
+  },
+
   castToStack: (playerIndex, cardId, fromZone, type) => {
     const state = get()
     if (!state.players) return
@@ -315,7 +413,6 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
         }
       }
     }
-    // triggered/activated: card stays where it is, only the ability goes on the stack
 
     const stackItem: StackItem = {
       id: `stack-${Date.now()}`,
@@ -337,7 +434,6 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
     })
   },
 
-  // Fix #9: triggered/activated abilities just resolve — no card movement.
   resolveStack: (itemId) => {
     const state = get()
     if (!state.players) return
@@ -345,7 +441,6 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
     const item = state.stack.find(s => s.id === itemId)
     if (!item) return
 
-    // Abilities resolve without moving any card
     if (item.type === 'triggered' || item.type === 'activated') {
       set({
         stack: state.stack.filter(s => s.id !== itemId),
@@ -356,7 +451,6 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
       return
     }
 
-    // Cast spells: permanents go to battlefield, non-permanents to graveyard
     const playerIndex = state.players.findIndex(p => p.name === item.controller)
     const isPermanent = item.cardType ? PERMANENT_TYPES.has(item.cardType) : false
     let logLine = `${item.sourceCardName} resolves.`
@@ -400,7 +494,6 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
     })
   },
 
-  // Fix #9: abilities countered/removed just disappear — no card movement.
   removeFromStack: (itemId) => {
     const state = get()
     if (!state.players) return

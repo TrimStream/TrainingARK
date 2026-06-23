@@ -15,21 +15,27 @@ interface BoardCardProps {
   onRemove?: () => void
   onCreateTokenCopy?: () => void
   onToggleTapped?: () => void
+  onIncrement?: () => void
+  onDecrement?: () => void
   currentZone: EditableZone
   compact?: boolean
-  // showRemoveX: shows a small × in the corner for quick removal, in addition to
-  // the "Remove from Game" context menu option.
   showRemoveX?: boolean
 }
 
 const CARD_BACK = '/back_magic.png'
 
-export function BoardCard({ card, onMove, onCastToStack, onRemove, onCreateTokenCopy, currentZone, compact, showRemoveX }: BoardCardProps) {
+export function BoardCard({
+  card, onMove, onCastToStack, onRemove, onCreateTokenCopy,
+  onIncrement, onDecrement,
+  currentZone, compact, showRemoveX,
+}: BoardCardProps) {
   const [hovered, setHovered] = useState(false)
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null)
   const cardRef = useRef<HTMLDivElement>(null)
 
   const src = card.imageUrl ?? CARD_BACK
+  const isToken = card.isToken ?? false
+  const stackCount = card.stackCount ?? 1
 
   function openContextMenu(x: number, y: number) {
     setContextMenu({ x, y })
@@ -71,6 +77,7 @@ export function BoardCard({ card, onMove, onCastToStack, onRemove, onCreateToken
       cardName={card.name}
       cardType={card.cardType}
       isToken={card.isToken}
+      isCommander={card.isCommander}
       onMove={onMove}
       onCastToStack={onCastToStack}
       onRemove={() => onRemove?.()}
@@ -120,10 +127,33 @@ export function BoardCard({ card, onMove, onCastToStack, onRemove, onCreateToken
           <button
             className={styles.removeBtn}
             onClick={e => { e.preventDefault(); e.stopPropagation(); onRemove() }}
-            title="Remove from game"
+            title={isToken ? 'Remove all tokens' : 'Remove from game'}
           >
             ×
           </button>
+        )}
+
+        {isToken && stackCount > 1 && (
+          <div className={styles.stackBadge}>×{stackCount}</div>
+        )}
+
+        {hovered && isToken && (onIncrement || onDecrement) && (
+          <div className={styles.tokenControls}>
+            <button
+              className={styles.tokenBtn}
+              onClick={e => { e.preventDefault(); e.stopPropagation(); onDecrement?.() }}
+              title="Remove one"
+            >
+              −
+            </button>
+            <button
+              className={styles.tokenBtn}
+              onClick={e => { e.preventDefault(); e.stopPropagation(); onIncrement?.() }}
+              title="Add one"
+            >
+              +
+            </button>
+          </div>
         )}
 
         {hovered && card.imageUrl && createPortal(

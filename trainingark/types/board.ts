@@ -17,6 +17,8 @@ export interface Card {
   faceDown?: boolean
   counters?: Record<string, number>
   isToken?: boolean
+  isCommander?: boolean
+  stackCount?: number
 }
 
 export interface Zone {
