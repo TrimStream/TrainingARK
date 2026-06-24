@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import Image from 'next/image'
 import type { Player, PlayerPosition, Card } from '@/types/board'
 import styles from './PlayerZone.module.css'
@@ -99,10 +100,6 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
     if (!player) return 0
     const zone = player.zones[zoneName]
     return zone.cardCount ?? zone.cards.length
-  }
-
-  function cardSrc(card: Card, revealed: boolean): string {
-    return revealed && card.imageUrl ? card.imageUrl : CARD_BACK
   }
 
   function handleMove(cardId: string, target: ZoneTarget) {
@@ -314,7 +311,6 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
   const expandedCards = filterText
     ? expandedCardsRaw.filter(c => c.name.toLowerCase().includes(filterText.toLowerCase()))
     : expandedCardsRaw
-  const topExpandedCard = expandedCards[expandedCards.length - 1]
 
   const expandedPanel = expanded && (
     <div className={styles.expandedPanel}>
@@ -323,37 +319,22 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
         <button className={styles.closeExpanded} onClick={() => setExpanded(null)}>×</button>
       </div>
 
-      {topExpandedCard && (
-        <div className={styles.expandedTopCard}>
-          <Image
-            src={cardSrc(topExpandedCard, true)}
-            alt={topExpandedCard.name}
-            width={180}
-            height={252}
-            style={{ borderRadius: 8, display: 'block', width: '100%', height: 'auto' }}
-          />
-        </div>
-      )}
-
       <div className={styles.expandedList}>
         {expandedCards.length === 0 && (
           <p className={styles.emptyZoneText}>No cards here.</p>
         )}
         {[...expandedCards].reverse().map(card => (
-          <div key={card.id} className={styles.expandedRow} onClick={e => e.stopPropagation()}>
-            <span className={styles.expandedRowName}>{card.name}</span>
-            <BoardCard
-              card={card}
-              onMove={t => handleMove(card.id, t)}
-              onCastToStack={t => handleCastToStack(card.id, t)}
-              onRemove={() => handleRemove(card.id)}
-              onCreateTokenCopy={() => handleTokenCopy(card.id)}
-              onIncrement={card.isToken ? () => incrementToken(playerIndex, card.id) : undefined}
-              onDecrement={card.isToken ? () => decrementToken(playerIndex, card.id) : undefined}
-              currentZone={expanded}
-              compact
-            />
-          </div>
+          <ExpandedRow
+            key={card.id}
+            card={card}
+            onMove={t => handleMove(card.id, t)}
+            onCastToStack={t => handleCastToStack(card.id, t)}
+            onRemove={() => handleRemove(card.id)}
+            onCreateTokenCopy={() => handleTokenCopy(card.id)}
+            onIncrement={card.isToken ? () => incrementToken(playerIndex, card.id) : undefined}
+            onDecrement={card.isToken ? () => decrementToken(playerIndex, card.id) : undefined}
+            currentZone={expanded}
+          />
         ))}
       </div>
 
@@ -618,6 +599,7 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
 
   function renderBattlefieldCard(card: Card) {
     const dup = !card.isToken && isDuplicate(playerIndex, card.name, card.id) && !dismissedDuplicateWarnings.has(card.id)
+
     return (
       <div key={card.id} className={styles.battlefieldCardWrap}>
         {dup && (
@@ -727,6 +709,61 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
           items={zoneMenu.items}
           onClose={() => setZoneMenu(null)}
         />
+      )}
+    </div>
+  )
+}
+
+function ExpandedRow({ card, onMove, onCastToStack, onRemove, onCreateTokenCopy, onIncrement, onDecrement, currentZone }: {
+  card: Card
+  onMove: (t: ZoneTarget) => void
+  onCastToStack: (t: StackType) => void
+  onRemove: () => void
+  onCreateTokenCopy?: () => void
+  onIncrement?: () => void
+  onDecrement?: () => void
+  currentZone: EditableZone
+}) {
+  const [hovered, setHovered] = useState(false)
+
+  return (
+    <div
+      className={styles.expandedRow}
+      onClick={e => e.stopPropagation()}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      <span className={styles.expandedRowName}>{card.name}</span>
+      <BoardCard
+        card={card}
+        onMove={onMove}
+        onCastToStack={onCastToStack}
+        onRemove={onRemove}
+        onCreateTokenCopy={onCreateTokenCopy}
+        onIncrement={onIncrement}
+        onDecrement={onDecrement}
+        currentZone={currentZone}
+        compact
+      />
+      {hovered && card.imageUrl && createPortal(
+        <div style={{
+          position: 'fixed',
+          bottom: 16,
+          right: 16,
+          zIndex: 9998,
+          pointerEvents: 'none',
+          borderRadius: 8,
+          boxShadow: '0 16px 48px rgba(0,0,0,0.7)',
+        }}>
+          <Image
+            src={card.imageUrl}
+            alt={card.name}
+            width={240}
+            height={336}
+            style={{ borderRadius: 8, display: 'block' }}
+          />
+        </div>,
+        document.body
       )}
     </div>
   )
