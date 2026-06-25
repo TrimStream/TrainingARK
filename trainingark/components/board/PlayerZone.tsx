@@ -65,7 +65,7 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
     players, updatePlayer, confirmSetup, setupComplete,
     moveCard, addCard, castToStack, setLife, setTax, setTaxPartner,
     decklists, drawCard, shuffleLibrary, removeCard, createTokenCopy,
-    incrementToken, decrementToken,
+    incrementToken, decrementToken, toggleTapped,
     isDuplicate, dismissDuplicateWarning, dismissedDuplicateWarnings,
   } = useBuilderStore()
 
@@ -647,6 +647,7 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
           onCastToStack={t => handleCastToStack(card.id, t)}
           onRemove={() => handleRemove(card.id)}
           onCreateTokenCopy={() => handleTokenCopy(card.id)}
+          onToggleTapped={() => toggleTapped(playerIndex, card.id)}
           onIncrement={card.isToken ? () => incrementToken(playerIndex, card.id) : undefined}
           onDecrement={card.isToken ? () => decrementToken(playerIndex, card.id) : undefined}
           showRemoveX

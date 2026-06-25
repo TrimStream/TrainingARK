@@ -24,8 +24,10 @@ interface CardContextMenuProps {
   cardType: Card['cardType']
   isToken?: boolean
   isCommander?: boolean
+  isTapped?: boolean
   onMove: (target: ZoneTarget) => void
   onCastToStack: (type: StackType) => void
+  onToggleTapped?: () => void
   onRemove: () => void
   onCreateTokenCopy?: () => void
   onClose: () => void
@@ -33,8 +35,8 @@ interface CardContextMenuProps {
 }
 
 export function CardContextMenu({
-  x, y, cardName, cardType, isToken, isCommander,
-  onMove, onCastToStack, onRemove, onCreateTokenCopy, onClose, currentZone,
+  x, y, cardName, cardType, isToken, isCommander, isTapped,
+  onMove, onCastToStack, onToggleTapped, onRemove, onCreateTokenCopy, onClose, currentZone,
 }: CardContextMenuProps) {
   const ref = useRef<HTMLDivElement>(null)
 
@@ -54,7 +56,7 @@ export function CardContextMenu({
   }, [onClose])
 
   const menuWidth = 200
-  const menuHeight = 340
+  const menuHeight = 360
   const adjustedX = x + menuWidth > window.innerWidth ? x - menuWidth : x
   const adjustedY = y + menuHeight > window.innerHeight ? y - menuHeight : y
 
@@ -65,6 +67,15 @@ export function CardContextMenu({
     <div ref={ref} className={styles.menu} style={{ left: adjustedX, top: adjustedY }}>
       <div className={styles.menuHeader}>{cardName}</div>
       <div className={styles.menuDivider} />
+
+      {onBattlefield && onToggleTapped && (
+        <>
+          <button className={styles.menuItem} onClick={() => { onToggleTapped(); onClose() }}>
+            {isTapped ? 'Untap' : 'Tap'} <span className={styles.kbd}>T</span>
+          </button>
+          <div className={styles.menuDivider} />
+        </>
+      )}
 
       {currentZone !== 'battlefield' && (
         <button className={styles.menuItem} onClick={() => { onMove('battlefield'); onClose() }}>

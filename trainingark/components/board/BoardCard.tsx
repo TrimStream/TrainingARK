@@ -26,6 +26,7 @@ const CARD_BACK = '/back_magic.png'
 
 export function BoardCard({
   card, onMove, onCastToStack, onRemove, onCreateTokenCopy,
+  onToggleTapped,
   onIncrement, onDecrement,
   currentZone, compact, showRemoveX,
 }: BoardCardProps) {
@@ -64,6 +65,9 @@ export function BoardCard({
         case 'g': onMove('graveyard'); break
         case 'e': onMove('exile'); break
         case 'l': onMove('library-top'); break
+        case 't':
+          if (currentZone === 'battlefield') onToggleTapped?.()
+          break
       }
     }
     window.addEventListener('keydown', handleKey)
@@ -78,8 +82,10 @@ export function BoardCard({
       cardType={card.cardType}
       isToken={card.isToken}
       isCommander={card.isCommander}
+      isTapped={card.tapped}
       onMove={onMove}
       onCastToStack={onCastToStack}
+      onToggleTapped={onToggleTapped}
       onRemove={() => onRemove?.()}
       onCreateTokenCopy={onCreateTokenCopy}
       onClose={() => setContextMenu(null)}

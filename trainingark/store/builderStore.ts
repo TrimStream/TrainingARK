@@ -154,13 +154,17 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
     if (!state.players) return
     const player = state.players[playerIndex]
     let found = false
+    let cardName = ''
+    let nowTapped = false
     const updatedZones = { ...player.zones }
     for (const zoneName in updatedZones) {
       const zone = updatedZones[zoneName as EditableZone]
       const cardIndex = zone.cards.findIndex((c: Card) => c.id === cardId)
       if (cardIndex !== -1) {
         const updatedCards = [...zone.cards]
-        updatedCards[cardIndex] = { ...updatedCards[cardIndex], tapped: !updatedCards[cardIndex].tapped }
+        nowTapped = !updatedCards[cardIndex].tapped
+        cardName = updatedCards[cardIndex].name
+        updatedCards[cardIndex] = { ...updatedCards[cardIndex], tapped: nowTapped }
         updatedZones[zoneName as EditableZone] = { ...zone, cards: updatedCards }
         found = true
         break
@@ -169,7 +173,11 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
     if (!found) return
     const updated = [...state.players] as [Player, Player, Player, Player]
     updated[playerIndex] = { ...player, zones: updatedZones }
-    set({ players: updated })
+    const logLine = `${player.name}'s ${cardName} is ${nowTapped ? 'tapped' : 'untapped'}.`
+    set({
+      players: updated,
+      logLines: state.scenarioStarted ? [...state.logLines, logLine] : state.logLines,
+    })
   },
 
   untapAll: (playerIndex) => {
