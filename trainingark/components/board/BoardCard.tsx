@@ -60,14 +60,12 @@ export function BoardCard({
     function handleKey(e: KeyboardEvent) {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
       switch (e.key.toLowerCase()) {
-        case 'b': onMove('battlefield'); break
-        case 'h': onMove('hand'); break
-        case 'g': onMove('graveyard'); break
-        case 'e': onMove('exile'); break
-        case 'l': onMove('library-top'); break
-        case 't':
-          if (currentZone === 'battlefield') onToggleTapped?.()
-          break
+        case 'b': if (currentZone !== 'battlefield') onMove('battlefield'); break
+        case 'h': if (currentZone !== 'hand') onMove('hand'); break
+        case 'g': if (currentZone !== 'graveyard') onMove('graveyard'); break
+        case 'e': if (currentZone !== 'exile') onMove('exile'); break
+        case 'l': if (currentZone !== 'library') onMove('library-top'); break
+        case 't': if (currentZone === 'battlefield') onToggleTapped?.(); break
       }
     }
     window.addEventListener('keydown', handleKey)
