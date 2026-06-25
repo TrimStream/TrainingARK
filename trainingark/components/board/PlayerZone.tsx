@@ -32,13 +32,13 @@ function formatTax(tax: Player['commanderTax']): string {
 const PLAYER_NAMES = ['Player', 'Opponent 1', 'Opponent 2', 'Opponent 3']
 
 const ZONE_TARGET_MAP: Record<ZoneTarget, EditableZone> = {
-	battlefield: 'battlefield',
-	hand: 'hand',
-	graveyard: 'graveyard',
-	exile: 'exile',
-	'library-top': 'library',
-	'library-bottom': 'library',
-	command: 'command',
+  battlefield: 'battlefield',
+  hand: 'hand',
+  graveyard: 'graveyard',
+  exile: 'exile',
+  'library-top': 'library',
+  'library-bottom': 'library',
+  command: 'command',
 }
 
 function parseCardType(typeLine: string): Card['cardType'] {
@@ -134,13 +134,8 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
     }
   }
 
-  function handleRemove(cardId: string) {
-    removeCard(playerIndex, cardId)
-  }
-
-  function handleTokenCopy(cardId: string) {
-    createTokenCopy(playerIndex, cardId)
-  }
+  function handleRemove(cardId: string) { removeCard(playerIndex, cardId) }
+  function handleTokenCopy(cardId: string) { createTokenCopy(playerIndex, cardId) }
 
   function handleAddCard(zone: EditableZone, rect: DOMRect, tokensOnly?: boolean) {
     setShowCardSearch({ zone, tokensOnly })
@@ -162,10 +157,7 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
     const updated: Player = {
       ...(player as Player),
       ...partial,
-      zones: {
-        ...(player as Player).zones,
-        ...(partial.zones ?? {}),
-      },
+      zones: { ...(player as Player).zones, ...(partial.zones ?? {}) },
       commanderTax: partial.commanderTax ?? 0,
     }
     updatePlayer(playerIndex, updated)
@@ -239,11 +231,7 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
       : Math.min(HAND_OVERLAP, (fanWidth - CARD_W) / (count - 1))
 
     return (
-      <div
-        ref={handFanRef}
-        className={styles.handFan}
-        onClick={() => toggle('hand')}
-      >
+      <div ref={handFanRef} className={styles.handFan} onClick={() => toggle('hand')}>
         {handRevealed && handCards.length > 0
           ? handCards.map((card: Card, i: number) => (
               <div key={card.id} className={styles.fanCard} style={{ left: i * dynamicOverlap }} onClick={e => e.stopPropagation()}>
@@ -268,9 +256,7 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
   }
 
   function renderPile(cards: Card[], count: number, revealed: boolean, zone: EditableZone) {
-    if (count === 0) {
-      return <div className={styles.emptyPile} style={{ width: CARD_W, height: CARD_H }} />
-    }
+    if (count === 0) return <div className={styles.emptyPile} style={{ width: CARD_W, height: CARD_H }} />
     const topCard = cards[cards.length - 1]
     if (!topCard) {
       return (
@@ -295,9 +281,7 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
 
   function renderCommandZone() {
     const cards = p.zones.command.cards
-    if (cards.length === 0) {
-      return <div className={styles.emptyPile} style={{ width: CARD_W, height: CARD_H }} />
-    }
+    if (cards.length === 0) return <div className={styles.emptyPile} style={{ width: CARD_W, height: CARD_H }} />
     return (
       <div className={styles.commandWrap} style={{ width: cards.length === 1 ? CARD_W : CARD_W + 16 }}>
         {cards.map((card: Card, i: number) => (
@@ -313,146 +297,6 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
       </div>
     )
   }
-
-  function getExpandedCards(): Card[] {
-    if (!expanded) return []
-    if (expanded === 'hand') return handRevealed ? handCards : []
-    return p.zones[expanded].cards
-  }
-
-  const expandedCardsRaw = getExpandedCards()
-  const expandedCards = filterText
-    ? expandedCardsRaw.filter(c => c.name.toLowerCase().includes(filterText.toLowerCase()))
-    : expandedCardsRaw
-
-  const expandedPanel = expanded && (
-    <div className={styles.expandedPanel}>
-      <div className={styles.expandedHeader}>
-        <span>Viewing {expanded[0].toUpperCase() + expanded.slice(1)}</span>
-        <button className={styles.closeExpanded} onClick={() => setExpanded(null)}>×</button>
-      </div>
-
-      <div className={styles.expandedList}>
-        {expandedCards.length === 0 && (
-          <p className={styles.emptyZoneText}>No cards here.</p>
-        )}
-        {[...expandedCards].reverse().map(card => (
-          <ExpandedRow
-            key={card.id}
-            card={card}
-            onMove={t => handleMove(card.id, t)}
-            onCastToStack={t => handleCastToStack(card.id, t)}
-            onRemove={() => handleRemove(card.id)}
-            onCreateTokenCopy={() => handleTokenCopy(card.id)}
-            onIncrement={card.isToken ? () => incrementToken(playerIndex, card.id) : undefined}
-            onDecrement={card.isToken ? () => decrementToken(playerIndex, card.id) : undefined}
-            currentZone={expanded}
-          />
-        ))}
-      </div>
-
-      <input
-        className={styles.expandedFilter}
-        placeholder="Filter..."
-        value={filterText}
-        onChange={e => setFilterText(e.target.value)}
-        onClick={e => e.stopPropagation()}
-      />
-    </div>
-  )
-
-  const lifeDisplay = editingLife ? (
-    <input
-      className={styles.inlineInput}
-      type="number"
-      value={lifeInput}
-      onChange={e => setLifeInput(e.target.value)}
-      onBlur={commitLife}
-      onKeyDown={e => { if (e.key === 'Enter') commitLife(); if (e.key === 'Escape') setEditingLife(false) }}
-      autoFocus
-    />
-  ) : (
-    <span
-      className={styles.playerLife}
-      onClick={() => { setLifeInput(String(p.life)); setEditingLife(true) }}
-      title="Click to edit"
-    >
-      {p.life}
-    </span>
-  )
-
-  const isPartner = Array.isArray(p.commanderTax)
-
-  function renderTax() {
-    if (!isPartner) {
-      if (editingTax === 0) {
-        return (
-          <input
-            className={styles.inlineInput}
-            type="number"
-            value={taxInput}
-            onChange={e => setTaxInput(e.target.value)}
-            onBlur={commitTax}
-            onKeyDown={e => { if (e.key === 'Enter') commitTax(); if (e.key === 'Escape') setEditingTax(null) }}
-            autoFocus
-          />
-        )
-      }
-      return (
-        <span
-          className={styles.playerTax}
-          onClick={() => { setTaxInput(String(p.commanderTax)); setEditingTax(0) }}
-          title="Click to edit"
-        >
-          {formatTax(p.commanderTax)}
-        </span>
-      )
-    }
-
-    const taxArr = p.commanderTax as [number, number]
-    const t0 = taxArr[0]
-    const t1 = taxArr[1]
-    return (
-      <span className={styles.playerTax}>
-        Tax:{' '}
-        {editingTax === 0 ? (
-          <input
-            className={styles.inlineInput}
-            type="number"
-            value={taxInput}
-            onChange={e => setTaxInput(e.target.value)}
-            onBlur={commitTax}
-            onKeyDown={e => { if (e.key === 'Enter') commitTax(); if (e.key === 'Escape') setEditingTax(null) }}
-            autoFocus
-          />
-        ) : (
-          <span onClick={() => { setTaxInput(String(t0)); setEditingTax(0) }} style={{ cursor: 'pointer' }} title="Click to edit">{t0}</span>
-        )}
-        {' / '}
-        {editingTax === 1 ? (
-          <input
-            className={styles.inlineInput}
-            type="number"
-            value={taxInput}
-            onChange={e => setTaxInput(e.target.value)}
-            onBlur={commitTax}
-            onKeyDown={e => { if (e.key === 'Enter') commitTax(); if (e.key === 'Escape') setEditingTax(null) }}
-            autoFocus
-          />
-        ) : (
-          <span onClick={() => { setTaxInput(String(t1)); setEditingTax(1) }} style={{ cursor: 'pointer' }} title="Click to edit">{t1}</span>
-        )}
-      </span>
-    )
-  }
-
-  const playerMetaBlock = (
-    <div className={styles.playerMeta}>
-      <span className={styles.playerName}>{p.name}</span>
-      {lifeDisplay}
-      {renderTax()}
-    </div>
-  )
 
   function zoneHeader(
     label: string,
@@ -475,151 +319,233 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
     )
   }
 
+  // Each zone section defined once — left and right layouts compose of these
+  const libCount = zoneCount('library')
+
+  const handSection = (
+    <div className={styles.zoneSection} style={{ flex: 1, minWidth: 0 }}>
+      {zoneHeader('Hand', handCount, 'hand', [
+        { label: 'Move all to Library', action: () => moveAllFromZone('hand', 'library') },
+        { label: 'Move all to Bottom of Library', action: () => moveAllFromZone('hand', 'library') },
+        { label: 'Move all to Graveyard', action: () => moveAllFromZone('hand', 'graveyard') },
+        { label: 'Move all to Exile', action: () => moveAllFromZone('hand', 'exile') },
+        { label: 'Discard a Card Randomly', action: discardRandom, danger: true },
+      ], handAddBtnRef, () => { const r = handAddBtnRef.current?.getBoundingClientRect(); if (r) handleAddCard('hand', r) })}
+      {renderHand()}
+    </div>
+  )
+
+  const librarySection = (
+    <div className={styles.zoneSection}>
+      {zoneHeader('Library', libCount, 'library', [
+        { label: 'View Top Card', action: () => toggle('library') },
+        { label: 'Move all to Graveyard', action: () => moveAllFromZone('library', 'graveyard') },
+        { label: 'Move all to Exile', action: () => moveAllFromZone('library', 'exile') },
+        { label: 'Shuffle', action: () => shuffleLibrary(playerIndex) },
+      ], libraryAddBtnRef, () => { const r = libraryAddBtnRef.current?.getBoundingClientRect(); if (r) handleAddCard('library', r) })}
+      <div
+        style={{ cursor: libCount > 0 ? 'pointer' : 'default' }}
+        onClick={() => { if (libCount > 0) drawCard(playerIndex) }}
+        title={libCount > 0 ? 'Click to draw' : ''}
+      >
+        {libCount > 0
+          ? <Image src={CARD_BACK} alt="Library" width={CARD_W} height={CARD_H} style={{ borderRadius: 4, display: 'block', width: CARD_W, height: CARD_H }} />
+          : <div className={styles.emptyPile} style={{ width: CARD_W, height: CARD_H }} />
+        }
+      </div>
+    </div>
+  )
+
+  const graveyardSection = (
+    <div className={styles.zoneSection}>
+      {zoneHeader('Graveyard', zoneCount('graveyard'), 'graveyard', [
+        { label: 'View all', action: () => toggle('graveyard') },
+        { label: 'Move all to Hand', action: () => moveAllFromZone('graveyard', 'hand') },
+        { label: 'Move all to Library', action: () => moveAllFromZone('graveyard', 'library') },
+        { label: 'Move all to Bottom of Library', action: () => moveAllFromZone('graveyard', 'library') },
+        { label: 'Move all to Exile', action: () => moveAllFromZone('graveyard', 'exile') },
+      ], graveyardAddBtnRef, () => { const r = graveyardAddBtnRef.current?.getBoundingClientRect(); if (r) handleAddCard('graveyard', r) })}
+      {renderPile(p.zones.graveyard.cards, zoneCount('graveyard'), true, 'graveyard')}
+    </div>
+  )
+
+  const exileSection = (
+    <div className={styles.zoneSection}>
+      {zoneHeader('Exile', zoneCount('exile'), 'exile', [
+        { label: 'View all', action: () => toggle('exile') },
+        { label: 'Move all to Battlefield', action: () => moveAllFromZone('exile', 'battlefield') },
+        { label: 'Move all to Hand', action: () => moveAllFromZone('exile', 'hand') },
+        { label: 'Move all to Graveyard', action: () => moveAllFromZone('exile', 'graveyard') },
+        { label: 'Move all to Library', action: () => moveAllFromZone('exile', 'library') },
+        { label: 'Move all to Bottom of Library', action: () => moveAllFromZone('exile', 'library') },
+      ], exileAddBtnRef, () => { const r = exileAddBtnRef.current?.getBoundingClientRect(); if (r) handleAddCard('exile', r) })}
+      {renderPile(p.zones.exile.cards, zoneCount('exile'), true, 'exile')}
+    </div>
+  )
+
+  const commandSection = (
+    <div className={styles.zoneSection}>
+      <div className={styles.zoneLabelRow}>
+        <span className={styles.zoneLabelText}>Command</span>
+      </div>
+      {renderCommandZone()}
+    </div>
+  )
+
+  const div = <div className={styles.stripDivider} />
+
   const rightSideZones = (
     <>
-      <div className={styles.zoneSection} style={{ flex: 1, minWidth: 0 }}>
-        {zoneHeader('Hand', handCount, 'hand', [
-          { label: 'Move all to Library', action: () => moveAllFromZone('hand', 'library') },
-          { label: 'Move all to Bottom of Library', action: () => moveAllFromZone('hand', 'library') },
-          { label: 'Move all to Graveyard', action: () => moveAllFromZone('hand', 'graveyard') },
-          { label: 'Move all to Exile', action: () => moveAllFromZone('hand', 'exile') },
-          { label: 'Discard a Card Randomly', action: discardRandom, danger: true },
-        ], handAddBtnRef, () => { const r = handAddBtnRef.current?.getBoundingClientRect(); if (r) handleAddCard('hand', r) })}
-        {renderHand()}
-      </div>
-      <div className={styles.stripDivider} />
-      <div className={styles.zoneSection}>
-        {zoneHeader('Library', zoneCount('library'), 'library', [
-          { label: 'View Top Card', action: () => toggle('library') },
-          { label: 'Move all to Graveyard', action: () => moveAllFromZone('library', 'graveyard') },
-          { label: 'Move all to Exile', action: () => moveAllFromZone('library', 'exile') },
-          { label: 'Shuffle', action: () => shuffleLibrary(playerIndex) },
-        ], libraryAddBtnRef, () => { const r = libraryAddBtnRef.current?.getBoundingClientRect(); if (r) handleAddCard('library', r) })}
-        <div
-          style={{ cursor: zoneCount('library') > 0 ? 'pointer' : 'default' }}
-          onClick={() => { if (zoneCount('library') > 0) drawCard(playerIndex) }}
-          title={zoneCount('library') > 0 ? 'Click to draw' : ''}
-        >
-          {zoneCount('library') > 0 ? (
-            <Image src={CARD_BACK} alt="Library" width={CARD_W} height={CARD_H} style={{ borderRadius: 4, display: 'block', width: CARD_W, height: CARD_H }} />
-          ) : (
-            <div className={styles.emptyPile} style={{ width: CARD_W, height: CARD_H }} />
-          )}
-        </div>
-      </div>
-      <div className={styles.stripDivider} />
-      <div className={styles.zoneSection}>
-        {zoneHeader('Graveyard', zoneCount('graveyard'), 'graveyard', [
-          { label: 'View all', action: () => toggle('graveyard') },
-          { label: 'Move all to Hand', action: () => moveAllFromZone('graveyard', 'hand') },
-          { label: 'Move all to Library', action: () => moveAllFromZone('graveyard', 'library') },
-          { label: 'Move all to Bottom of Library', action: () => moveAllFromZone('graveyard', 'library') },
-          { label: 'Move all to Exile', action: () => moveAllFromZone('graveyard', 'exile') },
-        ], graveyardAddBtnRef, () => { const r = graveyardAddBtnRef.current?.getBoundingClientRect(); if (r) handleAddCard('graveyard', r) })}
-        {renderPile(p.zones.graveyard.cards, zoneCount('graveyard'), true, 'graveyard')}
-      </div>
-      <div className={styles.stripDivider} />
-      <div className={styles.zoneSection}>
-        {zoneHeader('Exile', zoneCount('exile'), 'exile', [
-          { label: 'View all', action: () => toggle('exile') },
-          { label: 'Move all to Battlefield', action: () => moveAllFromZone('exile', 'battlefield') },
-          { label: 'Move all to Hand', action: () => moveAllFromZone('exile', 'hand') },
-          { label: 'Move all to Graveyard', action: () => moveAllFromZone('exile', 'graveyard') },
-          { label: 'Move all to Library', action: () => moveAllFromZone('exile', 'library') },
-          { label: 'Move all to Bottom of Library', action: () => moveAllFromZone('exile', 'library') },
-        ], exileAddBtnRef, () => { const r = exileAddBtnRef.current?.getBoundingClientRect(); if (r) handleAddCard('exile', r) })}
-        {renderPile(p.zones.exile.cards, zoneCount('exile'), true, 'exile')}
-      </div>
-      <div className={styles.stripDivider} />
-      <div className={styles.zoneSection}>
-        <div className={styles.zoneLabelRow}>
-          <span className={styles.zoneLabelText}>Command</span>
-        </div>
-        {renderCommandZone()}
-      </div>
+      {handSection}{div}
+      {librarySection}{div}
+      {graveyardSection}{div}
+      {exileSection}{div}
+      {commandSection}
     </>
   )
 
   const leftSideZones = (
     <>
-      <div className={styles.zoneSection}>
-        <div className={styles.zoneLabelRow}>
-          <span className={styles.zoneLabelText}>Command</span>
-        </div>
-        {renderCommandZone()}
-      </div>
-      <div className={styles.stripDivider} />
-      <div className={styles.zoneSection}>
-        {zoneHeader('Exile', zoneCount('exile'), 'exile', [
-          { label: 'View all', action: () => toggle('exile') },
-          { label: 'Move all to Battlefield', action: () => moveAllFromZone('exile', 'battlefield') },
-          { label: 'Move all to Hand', action: () => moveAllFromZone('exile', 'hand') },
-          { label: 'Move all to Graveyard', action: () => moveAllFromZone('exile', 'graveyard') },
-          { label: 'Move all to Library', action: () => moveAllFromZone('exile', 'library') },
-          { label: 'Move all to Bottom of Library', action: () => moveAllFromZone('exile', 'library') },
-        ], exileAddBtnRef, () => { const r = exileAddBtnRef.current?.getBoundingClientRect(); if (r) handleAddCard('exile', r) })}
-        {renderPile(p.zones.exile.cards, zoneCount('exile'), true, 'exile')}
-      </div>
-      <div className={styles.stripDivider} />
-      <div className={styles.zoneSection}>
-        {zoneHeader('Graveyard', zoneCount('graveyard'), 'graveyard', [
-          { label: 'View all', action: () => toggle('graveyard') },
-          { label: 'Move all to Hand', action: () => moveAllFromZone('graveyard', 'hand') },
-          { label: 'Move all to Library', action: () => moveAllFromZone('graveyard', 'library') },
-          { label: 'Move all to Bottom of Library', action: () => moveAllFromZone('graveyard', 'library') },
-          { label: 'Move all to Exile', action: () => moveAllFromZone('graveyard', 'exile') },
-        ], graveyardAddBtnRef, () => { const r = graveyardAddBtnRef.current?.getBoundingClientRect(); if (r) handleAddCard('graveyard', r) })}
-        {renderPile(p.zones.graveyard.cards, zoneCount('graveyard'), true, 'graveyard')}
-      </div>
-      <div className={styles.stripDivider} />
-      <div className={styles.zoneSection}>
-        {zoneHeader('Library', zoneCount('library'), 'library', [
-          { label: 'View Top Card', action: () => toggle('library') },
-          { label: 'Move all to Graveyard', action: () => moveAllFromZone('library', 'graveyard') },
-          { label: 'Move all to Exile', action: () => moveAllFromZone('library', 'exile') },
-          { label: 'Shuffle', action: () => shuffleLibrary(playerIndex) },
-        ], libraryAddBtnRef, () => { const r = libraryAddBtnRef.current?.getBoundingClientRect(); if (r) handleAddCard('library', r) })}
-        <div
-          style={{ cursor: zoneCount('library') > 0 ? 'pointer' : 'default' }}
-          onClick={() => { if (zoneCount('library') > 0) drawCard(playerIndex) }}
-          title={zoneCount('library') > 0 ? 'Click to draw' : ''}
-        >
-          {zoneCount('library') > 0 ? (
-            <Image src={CARD_BACK} alt="Library" width={CARD_W} height={CARD_H} style={{ borderRadius: 4, display: 'block', width: CARD_W, height: CARD_H }} />
-          ) : (
-            <div className={styles.emptyPile} style={{ width: CARD_W, height: CARD_H }} />
-          )}
-        </div>
-      </div>
-      <div className={styles.stripDivider} />
-      <div className={styles.zoneSection} style={{ flex: 1, minWidth: 0 }}>
-        {zoneHeader('Hand', handCount, 'hand', [
-          { label: 'Move all to Library', action: () => moveAllFromZone('hand', 'library') },
-          { label: 'Move all to Bottom of Library', action: () => moveAllFromZone('hand', 'library') },
-          { label: 'Move all to Graveyard', action: () => moveAllFromZone('hand', 'graveyard') },
-          { label: 'Move all to Exile', action: () => moveAllFromZone('hand', 'exile') },
-          { label: 'Discard a Card Randomly', action: discardRandom, danger: true },
-        ], handAddBtnRef, () => { const r = handAddBtnRef.current?.getBoundingClientRect(); if (r) handleAddCard('hand', r) })}
-        {renderHand()}
-      </div>
+      {commandSection}{div}
+      {exileSection}{div}
+      {graveyardSection}{div}
+      {librarySection}{div}
+      {handSection}
     </>
+  )
+
+  const expandedCardsRaw = (() => {
+    if (!expanded) return []
+    if (expanded === 'hand') return handRevealed ? handCards : []
+    return p.zones[expanded].cards
+  })()
+
+  const expandedCards = filterText
+    ? expandedCardsRaw.filter(c => c.name.toLowerCase().includes(filterText.toLowerCase()))
+    : expandedCardsRaw
+
+  const expandedPanel = expanded && (
+    <div className={styles.expandedPanel}>
+      <div className={styles.expandedHeader}>
+        <span>Viewing {expanded[0].toUpperCase() + expanded.slice(1)}</span>
+        <button className={styles.closeExpanded} onClick={() => setExpanded(null)}>×</button>
+      </div>
+      <div className={styles.expandedList}>
+        {expandedCards.length === 0 && (
+          <p className={styles.emptyZoneText}>No cards here.</p>
+        )}
+        {[...expandedCards].reverse().map(card => (
+          <ExpandedRow
+            key={card.id}
+            card={card}
+            onMove={t => handleMove(card.id, t)}
+            onCastToStack={t => handleCastToStack(card.id, t)}
+            onRemove={() => handleRemove(card.id)}
+            onCreateTokenCopy={() => handleTokenCopy(card.id)}
+            onIncrement={card.isToken ? () => incrementToken(playerIndex, card.id) : undefined}
+            onDecrement={card.isToken ? () => decrementToken(playerIndex, card.id) : undefined}
+            currentZone={expanded}
+          />
+        ))}
+      </div>
+      <input
+        className={styles.expandedFilter}
+        placeholder="Filter..."
+        value={filterText}
+        onChange={e => setFilterText(e.target.value)}
+        onClick={e => e.stopPropagation()}
+      />
+    </div>
+  )
+
+  const lifeDisplay = editingLife ? (
+    <input
+      className={styles.inlineInput}
+      type="number"
+      value={lifeInput}
+      onChange={e => setLifeInput(e.target.value)}
+      onBlur={commitLife}
+      onKeyDown={e => { if (e.key === 'Enter') commitLife(); if (e.key === 'Escape') setEditingLife(false) }}
+      autoFocus
+    />
+  ) : (
+    <span className={styles.playerLife} onClick={() => { setLifeInput(String(p.life)); setEditingLife(true) }} title="Click to edit">
+      {p.life}
+    </span>
+  )
+
+  const isPartner = Array.isArray(p.commanderTax)
+
+  function renderTax() {
+    if (!isPartner) {
+      if (editingTax === 0) {
+        return (
+          <input
+            className={styles.inlineInput}
+            type="number"
+            value={taxInput}
+            onChange={e => setTaxInput(e.target.value)}
+            onBlur={commitTax}
+            onKeyDown={e => { if (e.key === 'Enter') commitTax(); if (e.key === 'Escape') setEditingTax(null) }}
+            autoFocus
+          />
+        )
+      }
+      return (
+        <span className={styles.playerTax} onClick={() => { setTaxInput(String(p.commanderTax)); setEditingTax(0) }} title="Click to edit">
+          {formatTax(p.commanderTax)}
+        </span>
+      )
+    }
+
+    const taxArr = p.commanderTax as [number, number]
+    return (
+      <span className={styles.playerTax}>
+        Tax:{' '}
+        {editingTax === 0 ? (
+          <input
+            className={styles.inlineInput}
+            type="number"
+            value={taxInput}
+            onChange={e => setTaxInput(e.target.value)}
+            onBlur={commitTax}
+            onKeyDown={e => { if (e.key === 'Enter') commitTax(); if (e.key === 'Escape') setEditingTax(null) }}
+            autoFocus
+          />
+        ) : (
+          <span onClick={() => { setTaxInput(String(taxArr[0])); setEditingTax(0) }} style={{ cursor: 'pointer' }} title="Click to edit">{taxArr[0]}</span>
+        )}
+        {' / '}
+        {editingTax === 1 ? (
+          <input
+            className={styles.inlineInput}
+            type="number"
+            value={taxInput}
+            onChange={e => setTaxInput(e.target.value)}
+            onBlur={commitTax}
+            onKeyDown={e => { if (e.key === 'Enter') commitTax(); if (e.key === 'Escape') setEditingTax(null) }}
+            autoFocus
+          />
+        ) : (
+          <span onClick={() => { setTaxInput(String(taxArr[1])); setEditingTax(1) }} style={{ cursor: 'pointer' }} title="Click to edit">{taxArr[1]}</span>
+        )}
+      </span>
+    )
+  }
+
+  const playerMetaBlock = (
+    <div className={styles.playerMeta}>
+      <span className={styles.playerName}>{p.name}</span>
+      {lifeDisplay}
+      {renderTax()}
+    </div>
   )
 
   const strip = (
     <div className={`${styles.strip} ${isTop ? styles.stripTop : ''}`}>
-      {isRight && (
-        <>
-          {playerMetaBlock}
-          <div className={styles.stripDivider} />
-        </>
-      )}
+      {isRight && <>{playerMetaBlock}<div className={styles.stripDivider} /></>}
       {isRight ? rightSideZones : leftSideZones}
-      {!isRight && (
-        <>
-          <div className={styles.stripDivider} />
-          {playerMetaBlock}
-        </>
-      )}
+      {!isRight && <><div className={styles.stripDivider} />{playerMetaBlock}</>}
     </div>
   )
 
@@ -632,7 +558,6 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
 
   function renderBattlefieldCard(card: Card) {
     const dup = !card.isToken && isDuplicate(playerIndex, card.name, card.id) && !dismissedDuplicateWarnings.has(card.id)
-
     return (
       <div key={card.id} className={styles.battlefieldCardWrap}>
         {dup && (
@@ -658,19 +583,17 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
   }
 
   const sections = [
-    <div key="creatures" className={styles.section}>
-      {creatures.map(renderBattlefieldCard)}
-    </div>,
-    <div key="nonlands" className={styles.section}>
-      {nonlands.map(renderBattlefieldCard)}
-    </div>,
-    <div key="lands" className={styles.section}>
-      {lands.map(renderBattlefieldCard)}
-    </div>,
+    <div key="creatures" className={styles.section}>{creatures.map(renderBattlefieldCard)}</div>,
+    <div key="nonlands" className={styles.section}>{nonlands.map(renderBattlefieldCard)}</div>,
+    <div key="lands" className={styles.section}>{lands.map(renderBattlefieldCard)}</div>,
   ]
 
   const addBtnClass = isTop ? styles.addCardBtnBottom : styles.addCardBtnTop
   const outerSide = isRight ? styles.outerMenuRight : styles.outerMenuLeft
+
+  // Capture window dimensions here to avoid UMD global references in JSX
+  const winH = typeof window !== 'undefined' ? window.innerHeight : 800
+  const winW = typeof window !== 'undefined' ? window.innerWidth : 1200
 
   return (
     <div className={styles.playmat}>
@@ -722,8 +645,8 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
           className={styles.searchAnchor}
           style={{
             position: 'fixed',
-            top: Math.min(cardSearchRect.bottom + 4, window.innerHeight - 260),
-            left: Math.min(Math.max(cardSearchRect.left, 8), window.innerWidth - 240),
+            top: Math.min(cardSearchRect.bottom + 4, winH - 260),
+            left: Math.min(Math.max(cardSearchRect.left, 8), winW - 240),
             zIndex: 1000,
           }}
         >
@@ -789,13 +712,7 @@ function ExpandedRow({ card, onMove, onCastToStack, onRemove, onCreateTokenCopy,
           borderRadius: 8,
           boxShadow: '0 16px 48px rgba(0,0,0,0.7)',
         }}>
-          <Image
-            src={card.imageUrl}
-            alt={card.name}
-            width={240}
-            height={336}
-            style={{ borderRadius: 8, display: 'block' }}
-          />
+          <Image src={card.imageUrl} alt={card.name} width={240} height={336} style={{ borderRadius: 8, display: 'block' }} />
         </div>,
         document.body
       )}
@@ -877,14 +794,14 @@ function CardAddSearch({ decklist, tokensOnly, onSelect, onClose }: {
       const card: Card = {
         id: cardData.id,
         name: (() => {
-			if (tokensOnly && cardData.card_faces && cardData.name.includes('//')) {
-		      const match = cardData.card_faces.find(
-		        (f: { name: string }) => f.name.toLowerCase().includes(name.toLowerCase())
-		      )
-		      return match?.name ?? cardData.name
-		    }
-		    return cardData.name
-		  })(),
+          if (tokensOnly && cardData.card_faces && cardData.name.includes('//')) {
+            const match = cardData.card_faces.find(
+              (f: { name: string }) => f.name.toLowerCase().includes(name.toLowerCase())
+            )
+            return match?.name ?? cardData.name
+          }
+          return cardData.name
+        })(),
         imageUrl: cardData.image_uris?.normal ?? (() => {
           if (!cardData.card_faces) return undefined
           const match = cardData.card_faces.find(
