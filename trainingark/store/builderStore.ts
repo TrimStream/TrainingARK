@@ -327,6 +327,7 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
     const player = state.players[playerIndex]
     const updatedZones = { ...player.zones }
     let found = false
+    let removedFromZone: EditableZone | null = null
     for (const zoneName in updatedZones) {
       const zone = updatedZones[zoneName as EditableZone]
       const cardIndex = zone.cards.findIndex((c: Card) => c.id === cardId)
@@ -339,11 +340,20 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
           cards: updatedCards,
           cardCount: Math.max(0, count - 1),
         }
+        removedFromZone = zoneName as EditableZone
         found = true
         break
       }
     }
     if (!found) return
+
+    // Restore library count when removing from any non-library zone,
+    // since addCard decremented it when the card was originally placed.
+    if (removedFromZone && removedFromZone !== 'library') {
+      const libCount = updatedZones.library.cardCount ?? updatedZones.library.cards.length
+      updatedZones.library = { ...updatedZones.library, cardCount: libCount + 1 }
+    }
+
     const updated = [...state.players] as [Player, Player, Player, Player]
     updated[playerIndex] = { ...player, zones: updatedZones }
     set({ players: updated })

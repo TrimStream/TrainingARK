@@ -166,7 +166,7 @@
 .handFan {
   position: relative;
   height: 112px;
-  flex-shrink: 0;
+  width: 100%;
   cursor: pointer;
   overflow: hidden;
 }

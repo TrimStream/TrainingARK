@@ -87,6 +87,17 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
   const graveyardAddBtnRef = useRef<HTMLButtonElement>(null)
   const exileAddBtnRef = useRef<HTMLButtonElement>(null)
   const libraryAddBtnRef = useRef<HTMLButtonElement>(null)
+  const handFanRef = useRef<HTMLDivElement>(null)
+  const [fanWidth, setFanWidth] = useState(200)
+
+  useEffect(() => {
+    if (!handFanRef.current) return
+    const observer = new ResizeObserver(entries => {
+      setFanWidth(entries[0].contentRect.width)
+    })
+    observer.observe(handFanRef.current)
+    return () => observer.disconnect()
+  }, [])
 
   const isTop = position === 'top-left' || position === 'top-right'
   const isRight = position === 'top-right' || position === 'bottom-right'
@@ -223,17 +234,19 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
 
   function renderHand() {
     const count = handRevealed && handCards.length > 0 ? handCards.length : handCount
-    const totalWidth = CARD_W + Math.max(0, count - 1) * HAND_OVERLAP
+    const dynamicOverlap = count <= 1
+      ? 0
+      : Math.min(HAND_OVERLAP, (fanWidth - CARD_W) / (count - 1))
 
     return (
       <div
+        ref={handFanRef}
         className={styles.handFan}
-        style={{ width: Math.max(totalWidth, CARD_W) }}
         onClick={() => toggle('hand')}
       >
         {handRevealed && handCards.length > 0
           ? handCards.map((card: Card, i: number) => (
-              <div key={card.id} className={styles.fanCard} style={{ left: i * HAND_OVERLAP }} onClick={e => e.stopPropagation()}>
+              <div key={card.id} className={styles.fanCard} style={{ left: i * dynamicOverlap }} onClick={e => e.stopPropagation()}>
                 <BoardCard
                   card={card}
                   onMove={t => handleMove(card.id, t)}
@@ -245,7 +258,7 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
               </div>
             ))
           : Array.from({ length: count }).map((_, i: number) => (
-              <div key={i} className={styles.fanCard} style={{ left: i * HAND_OVERLAP }}>
+              <div key={i} className={styles.fanCard} style={{ left: i * dynamicOverlap }}>
                 <Image src={CARD_BACK} alt="Card back" width={CARD_W} height={CARD_H} style={{ borderRadius: 4, display: 'block', width: CARD_W, height: CARD_H }} />
               </div>
             ))
