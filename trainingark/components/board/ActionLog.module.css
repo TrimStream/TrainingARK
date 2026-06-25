@@ -31,6 +31,12 @@
   color: rgba(232, 224, 212, 0.3);
 }
 
+.turnInfo {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: #c9a84c;
+}
+
 .feed {
   flex: 1;
   overflow-y: auto;
@@ -50,6 +56,59 @@
   font-style: italic;
   line-height: 1.5;
   padding: 4px 0;
+}
+
+.notStarted {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 4px 0;
+}
+
+.turnSetup {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.turnLabel {
+  font-size: 0.6rem;
+  font-weight: 600;
+  color: rgba(232, 224, 212, 0.4);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-top: 4px;
+}
+
+.turnSelect {
+  background: #0f0f13;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  color: #e8e0d4;
+  font-size: 0.78rem;
+  padding: 5px 8px;
+  outline: none;
+  width: 100%;
+  cursor: pointer;
+}
+
+.turnSelect:focus {
+  border-color: #c9a84c;
+}
+
+.turnNumberInput {
+  background: #0f0f13;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  color: #e8e0d4;
+  font-size: 0.78rem;
+  padding: 5px 8px;
+  outline: none;
+  width: 80px;
+}
+
+.turnNumberInput:focus {
+  border-color: #c9a84c;
 }
 
 .lineWrapper {
@@ -135,6 +194,23 @@
   border-color: rgba(255, 255, 255, 0.2);
 }
 
+.passTurnBtn {
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  color: rgba(232, 224, 212, 0.5);
+  cursor: pointer;
+  font-size: 0.72rem;
+  padding: 6px 10px;
+  transition: color 0.1s, border-color 0.1s;
+  flex-shrink: 0;
+}
+
+.passTurnBtn:hover {
+  color: #c9a84c;
+  border-color: #c9a84c;
+}
+
 .saveBtn {
   flex: 1;
   background: #8b6914;
@@ -155,13 +231,6 @@
 .saveBtn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
-}
-
-.notStarted {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 8px 0;
 }
 
 .startBtn {

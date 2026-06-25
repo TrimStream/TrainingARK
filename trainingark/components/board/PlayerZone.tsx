@@ -482,7 +482,17 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
           { label: 'Move all to Exile', action: () => moveAllFromZone('library', 'exile') },
           { label: 'Shuffle', action: () => shuffleLibrary(playerIndex) },
         ], libraryAddBtnRef, () => { const r = libraryAddBtnRef.current?.getBoundingClientRect(); if (r) handleAddCard('library', r) })}
-        {renderPile([], zoneCount('library'), false, 'library')}
+        <div
+          style={{ cursor: zoneCount('library') > 0 ? 'pointer' : 'default' }}
+          onClick={() => { if (zoneCount('library') > 0) drawCard(playerIndex) }}
+          title={zoneCount('library') > 0 ? 'Click to draw' : ''}
+        >
+          {zoneCount('library') > 0 ? (
+            <Image src={CARD_BACK} alt="Library" width={CARD_W} height={CARD_H} style={{ borderRadius: 4, display: 'block', width: CARD_W, height: CARD_H }} />
+          ) : (
+            <div className={styles.emptyPile} style={{ width: CARD_W, height: CARD_H }} />
+          )}
+        </div>
       </div>
       <div className={styles.stripDivider} />
       <div className={styles.zoneSection}>
@@ -556,7 +566,17 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
           { label: 'Move all to Exile', action: () => moveAllFromZone('library', 'exile') },
           { label: 'Shuffle', action: () => shuffleLibrary(playerIndex) },
         ], libraryAddBtnRef, () => { const r = libraryAddBtnRef.current?.getBoundingClientRect(); if (r) handleAddCard('library', r) })}
-        {renderPile([], zoneCount('library'), false, 'library')}
+        <div
+          style={{ cursor: zoneCount('library') > 0 ? 'pointer' : 'default' }}
+          onClick={() => { if (zoneCount('library') > 0) drawCard(playerIndex) }}
+          title={zoneCount('library') > 0 ? 'Click to draw' : ''}
+        >
+          {zoneCount('library') > 0 ? (
+            <Image src={CARD_BACK} alt="Library" width={CARD_W} height={CARD_H} style={{ borderRadius: 4, display: 'block', width: CARD_W, height: CARD_H }} />
+          ) : (
+            <div className={styles.emptyPile} style={{ width: CARD_W, height: CARD_H }} />
+          )}
+        </div>
       </div>
       <div className={styles.stripDivider} />
       <div className={styles.zoneSection} style={{ flex: 1, minWidth: 0 }}>

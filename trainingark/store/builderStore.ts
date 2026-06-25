@@ -11,10 +11,13 @@ interface BuilderState {
   decklists: string[][]
   scenarioStarted: boolean
   dismissedDuplicateWarnings: Set<string>
+  firstPlayerIndex: number
+  currentTurnPlayerIndex: number
+  turnNumber: number
+  handSizes: [number, number, number, number]
 
   updatePlayer: (index: number, player: Player) => void
   confirmSetup: (index: number, decklist: string[]) => void
-
   moveCard: (playerIndex: number, cardId: string, fromZone: EditableZone, toZone: EditableZone) => void
   addCard: (playerIndex: number, zone: EditableZone, card: Card) => void
   silentAddCard: (playerIndex: number, zone: EditableZone, card: Card) => void
@@ -33,9 +36,14 @@ interface BuilderState {
   toggleTapped: (playerIndex: number, cardId: string) => void
   drawCard: (playerIndex: number) => void
   shuffleLibrary: (playerIndex: number) => void
+  untapAll: (playerIndex: number) => void
+  passTurn: () => void
+  setFirstPlayer: (index: number) => void
+  setCurrentTurnPlayer: (index: number) => void
+  setTurnNumber: (n: number) => void
+  setHandSize: (playerIndex: number, size: number) => void
   dismissDuplicateWarning: (cardId: string) => void
   isDuplicate: (playerIndex: number, cardName: string, excludeCardId?: string) => boolean
-
   addLogLine: (text: string) => void
   editLogLine: (index: number, text: string) => void
   removeLogLine: (index: number) => void
@@ -94,6 +102,10 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
   decklists: [[], [], [], []],
   scenarioStarted: false,
   dismissedDuplicateWarnings: new Set(),
+  firstPlayerIndex: 0,
+  currentTurnPlayerIndex: 0,
+  turnNumber: 1,
+  handSizes: [7, 7, 7, 7],
 
   updatePlayer: (index, player) => {
     const current = get().players
@@ -113,6 +125,15 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
   },
 
   startScenario: () => set({ scenarioStarted: true }),
+
+  setFirstPlayer: (index) => set({ firstPlayerIndex: index }),
+  setCurrentTurnPlayer: (index) => set({ currentTurnPlayerIndex: index }),
+  setTurnNumber: (n) => set({ turnNumber: n }),
+  setHandSize: (playerIndex, size) => {
+    const current = [...get().handSizes] as [number, number, number, number]
+    current[playerIndex] = size
+    set({ handSizes: current })
+  },
 
   isDuplicate: (playerIndex, cardName, excludeCardId) => {
     const state = get()
@@ -149,6 +170,60 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
     const updated = [...state.players] as [Player, Player, Player, Player]
     updated[playerIndex] = { ...player, zones: updatedZones }
     set({ players: updated })
+  },
+
+  untapAll: (playerIndex) => {
+    const state = get()
+    if (!state.players) return
+    pushHistory(state)
+    const player = state.players[playerIndex]
+    const updatedCards = player.zones.battlefield.cards.map((c: Card) => ({ ...c, tapped: false }))
+    const updated = [...state.players] as [Player, Player, Player, Player]
+    updated[playerIndex] = {
+      ...player,
+      zones: { ...player.zones, battlefield: { ...player.zones.battlefield, cards: updatedCards } },
+    }
+    set({ players: updated })
+  },
+
+  passTurn: () => {
+    const state = get()
+    if (!state.players) return
+    pushHistory(state)
+
+    const currentPlayer = state.players[state.currentTurnPlayerIndex]
+    const nextIdx = (state.currentTurnPlayerIndex + 1) % 4
+    const nextPlayer = state.players[nextIdx]
+
+    // Check if current player needs to discard
+    const currentHandCount = currentPlayer.zones.hand.cardCount ?? currentPlayer.zones.hand.cards.length
+    const currentHandSize = state.handSizes[state.currentTurnPlayerIndex]
+
+    // Untap all battlefield cards for next player
+    const updatedCards = nextPlayer.zones.battlefield.cards.map((c: Card) => ({ ...c, tapped: false }))
+    const updated = [...state.players] as [Player, Player, Player, Player]
+    updated[nextIdx] = {
+      ...nextPlayer,
+      zones: { ...nextPlayer.zones, battlefield: { ...nextPlayer.zones.battlefield, cards: updatedCards } },
+    }
+
+    // Increment turn number when it cycles back to the first player
+    const newTurnNumber = nextIdx === state.firstPlayerIndex
+      ? state.turnNumber + 1
+      : state.turnNumber
+
+    const newLogLines = [...state.logLines]
+    if (currentHandCount > currentHandSize) {
+      newLogLines.push(`${currentPlayer.name} must discard down to ${currentHandSize} cards.`)
+    }
+    newLogLines.push(`Turn ${newTurnNumber} — ${nextPlayer.name} untaps all permanents.`)
+
+    set({
+      players: updated,
+      currentTurnPlayerIndex: nextIdx,
+      turnNumber: newTurnNumber,
+      logLines: state.scenarioStarted ? newLogLines : state.logLines,
+    })
   },
 
   moveCard: (playerIndex, cardId, fromZone, toZone) => {
@@ -189,8 +264,6 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
 
     const player = state.players[playerIndex]
 
-    // Token stacking: if adding a token to the battlefield and a same-name token
-    // already exists there, increment its stackCount instead of adding a new card.
     if (card.isToken && zone === 'battlefield') {
       const existingIdx = player.zones.battlefield.cards.findIndex(
         c => c.isToken && c.name === card.name
@@ -276,8 +349,6 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
     set({ players: updated })
   },
 
-  // Token stacking: if a same-name token already exists on the battlefield,
-  // increment its count instead of adding a duplicate card object.
   createTokenCopy: (playerIndex, cardId) => {
     const state = get()
     if (!state.players) return
