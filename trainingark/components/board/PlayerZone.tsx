@@ -66,6 +66,7 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
     moveCard, addCard, castToStack, setLife, setTax, setTaxPartner,
     decklists, drawCard, shuffleLibrary, removeCard, createTokenCopy,
     incrementToken, decrementToken, toggleTapped,
+    handSizes, setHandSize,
     isDuplicate, dismissDuplicateWarning, dismissedDuplicateWarnings,
   } = useBuilderStore()
 
@@ -81,6 +82,8 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
   const [lifeInput, setLifeInput] = useState('')
   const [editingTax, setEditingTax] = useState<0 | 1 | null>(null)
   const [taxInput, setTaxInput] = useState('')
+  const [editingHandSize, setEditingHandSize] = useState(false)
+  const [handSizeInput, setHandSizeInput] = useState('')
   const [zoneMenu, setZoneMenu] = useState<{ x: number; y: number; items: ZoneMenuItem[] } | null>(null)
   const addBtnRef = useRef<HTMLButtonElement>(null)
   const handAddBtnRef = useRef<HTMLButtonElement>(null)
@@ -180,6 +183,12 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
       setTax(playerIndex, val)
     }
     setEditingTax(null)
+  }
+
+  function commitHandSize() {
+    const val = parseInt(handSizeInput)
+    if (!isNaN(val) && val > 0) setHandSize(playerIndex, val)
+    setEditingHandSize(false)
   }
 
   function moveAllFromZone(fromZone: EditableZone, toZone: EditableZone) {
@@ -538,6 +547,25 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
       <span className={styles.playerName}>{p.name}</span>
       {lifeDisplay}
       {renderTax()}
+      {editingHandSize ? (
+        <input
+          className={styles.inlineInput}
+          type="number"
+          value={handSizeInput}
+          onChange={e => setHandSizeInput(e.target.value)}
+          onBlur={commitHandSize}
+          onKeyDown={e => { if (e.key === 'Enter') commitHandSize(); if (e.key === 'Escape') setEditingHandSize(false) }}
+          autoFocus
+        />
+      ) : (
+        <span
+          className={styles.playerHandSize}
+          onClick={() => { setHandSizeInput(String(handSizes[playerIndex])); setEditingHandSize(true) }}
+          title="Click to edit hand size"
+        >
+          Max: {handSizes[playerIndex]}
+        </span>
+      )}
     </div>
   )
 
@@ -774,6 +802,8 @@ function CardAddSearch({ decklist, tokensOnly, onSelect, onClose }: {
         const data = await res.json()
         setSuggestions((data.data ?? []).slice(0, 8))
         setActiveIndex(-1)
+      } catch {
+        setSuggestions([])
       } finally {
         setLoading(false)
       }

@@ -510,3 +510,15 @@
 .searchAnchor {
   pointer-events: auto;
 }
+
+.playerHandSize {
+  font-size: 0.56rem;
+  font-weight: 400;
+  color: rgba(232, 224, 212, 0.35);
+  margin-top: 2px;
+  cursor: pointer;
+}
+
+.playerHandSize:hover {
+  color: rgba(232, 224, 212, 0.6);
+}

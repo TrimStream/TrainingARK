@@ -1,18 +1,21 @@
 'use client'
 
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
+import Image from 'next/image'
 import { useBuilderStore } from '@/store/builderStore'
 import styles from './ActionLog.module.css'
 
 export function ActionLog() {
   const {
     logLines, editLogLine, removeLogLine, undoLastAction, scenarioStarted, startScenario,
-    players, firstPlayerIndex, currentTurnPlayerIndex, turnNumber,
-    setFirstPlayer, setCurrentTurnPlayer, setTurnNumber, passTurn,
+    players, firstPlayerIndex, currentTurnPlayerIndex, turnNumber, handSizes,
+    setFirstPlayer, setCurrentTurnPlayer, setTurnNumber, passTurn, moveCard,
   } = useBuilderStore()
 
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
   const [editingText, setEditingText] = useState('')
+  const [showDiscardModal, setShowDiscardModal] = useState(false)
 
   function startEdit(index: number) {
     setEditingIndex(index)
@@ -26,8 +29,90 @@ export function ActionLog() {
     setEditingIndex(null)
   }
 
+  function handlePassTurn() {
+    if (!players) return
+    const currentPlayer = players[currentTurnPlayerIndex]
+    const handCount = currentPlayer.zones.hand.cardCount ?? currentPlayer.zones.hand.cards.length
+    const handSize = handSizes[currentTurnPlayerIndex]
+
+    if (handCount > handSize && currentPlayer.zones.hand.cards.length > 0) {
+      setShowDiscardModal(true)
+    } else {
+      passTurn()
+    }
+  }
+
+  function handleDiscardCard(cardId: string) {
+    if (!players) return
+    moveCard(currentTurnPlayerIndex, cardId, 'hand', 'graveyard')
+  }
+
+  function handleDiscardDone() {
+    setShowDiscardModal(false)
+    passTurn()
+  }
+
   const playerNames = players?.map(p => p.name) ?? ['Player', 'Opponent 1', 'Opponent 2', 'Opponent 3']
   const currentPlayer = players?.[currentTurnPlayerIndex]
+  const currentHandSize = handSizes[currentTurnPlayerIndex]
+  const currentHandCount = currentPlayer
+    ? (currentPlayer.zones.hand.cardCount ?? currentPlayer.zones.hand.cards.length)
+    : 0
+  const discardCount = Math.max(0, currentHandCount - currentHandSize)
+
+  const discardModal = showDiscardModal && currentPlayer && createPortal(
+    <div className={styles.discardBackdrop} onClick={e => e.stopPropagation()}>
+      <div className={styles.discardModal}>
+        <div className={styles.discardHeader}>
+          <span className={styles.discardTitle}>
+            {discardCount > 0
+              ? `${currentPlayer.name} must discard ${discardCount} card${discardCount > 1 ? 's' : ''}`
+              : `${currentPlayer.name} is at hand size`}
+          </span>
+        </div>
+
+        <div className={styles.discardGrid}>
+          {currentPlayer.zones.hand.cards.length === 0 ? (
+            <p className={styles.discardEmpty}>No cards to discard.</p>
+          ) : (
+            currentPlayer.zones.hand.cards.map(card => (
+              <div
+                key={card.id}
+                className={styles.discardCard}
+                onClick={() => handleDiscardCard(card.id)}
+                title={`Discard ${card.name}`}
+              >
+                <Image
+                  src={card.imageUrl ?? '/back_magic.png'}
+                  alt={card.name}
+                  width={80}
+                  height={112}
+                  style={{ borderRadius: 4, display: 'block' }}
+                />
+                <div className={styles.discardCardOverlay}>
+                  <span className={styles.discardCardName}>{card.name}</span>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        <div className={styles.discardActions}>
+          <button className={styles.discardSkipBtn} onClick={handleDiscardDone}>
+            Skip cleanup
+          </button>
+          <button
+            className={styles.discardDoneBtn}
+            onClick={handleDiscardDone}
+            disabled={discardCount > 0}
+          >
+            {discardCount > 0 ? `Discard ${discardCount} more` : 'Done'}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  )
 
   return (
     <div className={styles.panel}>
@@ -124,7 +209,7 @@ export function ActionLog() {
           <button className={styles.undoBtn} onClick={undoLastAction} title="Undo last action">
             Undo
           </button>
-          <button className={styles.passTurnBtn} onClick={passTurn} title="Pass turn">
+          <button className={styles.passTurnBtn} onClick={handlePassTurn} title="Pass turn">
             Pass turn
           </button>
           <button
@@ -136,6 +221,8 @@ export function ActionLog() {
           </button>
         </div>
       )}
+
+      {discardModal}
     </div>
   )
 }

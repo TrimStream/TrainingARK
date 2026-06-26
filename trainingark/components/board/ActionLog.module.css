@@ -92,9 +92,7 @@
   cursor: pointer;
 }
 
-.turnSelect:focus {
-  border-color: #c9a84c;
-}
+.turnSelect:focus { border-color: #c9a84c; }
 
 .turnNumberInput {
   background: #0f0f13;
@@ -107,9 +105,7 @@
   width: 80px;
 }
 
-.turnNumberInput:focus {
-  border-color: #c9a84c;
-}
+.turnNumberInput:focus { border-color: #c9a84c; }
 
 .lineWrapper {
   display: flex;
@@ -161,13 +157,8 @@
   line-height: 1.6;
 }
 
-.lineWrapper:hover .deleteLine {
-  opacity: 1;
-}
-
-.deleteLine:hover {
-  color: #e07070;
-}
+.lineWrapper:hover .deleteLine { opacity: 1; }
+.deleteLine:hover { color: #e07070; }
 
 .actions {
   display: flex;
@@ -224,14 +215,8 @@
   transition: background 0.15s;
 }
 
-.saveBtn:hover:not(:disabled) {
-  background: #c9a84c;
-}
-
-.saveBtn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
+.saveBtn:hover:not(:disabled) { background: #c9a84c; }
+.saveBtn:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .startBtn {
   background: #8b6914;
@@ -246,6 +231,132 @@
   width: 100%;
 }
 
-.startBtn:hover {
-  background: #c9a84c;
+.startBtn:hover { background: #c9a84c; }
+
+/* Discard picker modal */
+.discardBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
+
+.discardModal {
+  background: #1a1a24;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+  padding: 20px;
+  width: min(600px, 90vw);
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.discardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.discardTitle {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #e8e0d4;
+}
+
+.discardGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  overflow-y: auto;
+  max-height: 400px;
+  padding: 4px;
+}
+
+.discardCard {
+  position: relative;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: transform 0.1s, box-shadow 0.1s;
+  border: 2px solid transparent;
+}
+
+.discardCard:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  border-color: #e07070;
+}
+
+.discardCardOverlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0, 0, 0, 0.75);
+  padding: 3px 4px;
+  border-radius: 0 0 4px 4px;
+  opacity: 0;
+  transition: opacity 0.1s;
+}
+
+.discardCard:hover .discardCardOverlay {
+  opacity: 1;
+}
+
+.discardCardName {
+  font-size: 0.58rem;
+  color: #e8e0d4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+}
+
+.discardEmpty {
+  font-size: 0.72rem;
+  color: rgba(232, 224, 212, 0.3);
+  font-style: italic;
+}
+
+.discardActions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  flex-shrink: 0;
+}
+
+.discardSkipBtn {
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: rgba(232, 224, 212, 0.5);
+  cursor: pointer;
+  font-size: 0.78rem;
+  padding: 8px 16px;
+  transition: color 0.1s, border-color 0.1s;
+}
+
+.discardSkipBtn:hover {
+  color: #e8e0d4;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.discardDoneBtn {
+  background: #8b6914;
+  border: none;
+  border-radius: 6px;
+  color: #f5edda;
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 8px 16px;
+  transition: background 0.15s;
+}
+
+.discardDoneBtn:hover:not(:disabled) { background: #c9a84c; }
+.discardDoneBtn:disabled { opacity: 0.4; cursor: not-allowed; }
