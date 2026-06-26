@@ -78,9 +78,9 @@ export function ActionLog() {
             currentPlayer.zones.hand.cards.map(card => (
               <div
                 key={card.id}
-                className={styles.discardCard}
-                onClick={() => handleDiscardCard(card.id)}
-                title={`Discard ${card.name}`}
+                className={`${styles.discardCard} ${discardCount <= 0 ? styles.discardCardDone : ''}`}
+                onClick={() => { if (discardCount > 0) handleDiscardCard(card.id) }}
+                title={discardCount > 0 ? `Discard ${card.name}` : ''}
               >
                 <Image
                   src={card.imageUrl ?? '/back_magic.png'}

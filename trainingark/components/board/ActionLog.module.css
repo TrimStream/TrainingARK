@@ -360,3 +360,18 @@
 
 .discardDoneBtn:hover:not(:disabled) { background: #c9a84c; }
 .discardDoneBtn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.discardCardDone {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.discardCardDone:hover {
+  transform: none;
+  box-shadow: none;
+  border-color: transparent;
+}
+
+.discardCardDone .discardCardOverlay {
+  display: none;
+}
