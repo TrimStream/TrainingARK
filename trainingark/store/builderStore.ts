@@ -48,6 +48,7 @@ interface BuilderState {
   editLogLine: (index: number, text: string) => void
   removeLogLine: (index: number) => void
   undoLastAction: () => void
+  populateLibrary: (playerIndex: number, cards: Card[]) => void
 }
 
 type Snapshot = {
@@ -739,5 +740,21 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
     const snapshot = history[history.length - 1]
     history = history.slice(0, -1)
     set({ players: snapshot.players, stack: snapshot.stack, logLines: snapshot.logLines })
+  },
+
+  populateLibrary: (playerIndex, cards) => {
+    const state = get()
+    if (!state.players) return
+    pushHistory(state)
+    const player = state.players[playerIndex]
+    const updated = [...state.players] as [Player, Player, Player, Player]
+    updated[playerIndex] = {
+      ...player,
+      zones: { ...player.zones, library: { ...player.zones.library, cards, cardCount: cards.length } },
+    }
+    set({
+      players: updated,
+      logLines: state.scenarioStarted ? [...state.logLines, `${player.name}'s library is reorganized.`] : state.logLines,
+    })
   },
 }))

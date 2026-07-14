@@ -522,3 +522,280 @@
 .playerHandSize:hover {
   color: rgba(232, 224, 212, 0.6);
 }
+
+/* Library order modal */
+.libraryOrderBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.libraryOrderModal {
+  background: #1a1a24;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+  padding: 20px;
+  width: min(480px, 90vw);
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.libraryOrderHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #e8e0d4;
+  flex-shrink: 0;
+}
+
+.libraryOrderChoose {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.libraryOrderChooseBtn {
+  background: #0f0f13;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: #e8e0d4;
+  cursor: pointer;
+  padding: 14px 16px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: border-color 0.1s, background 0.1s;
+}
+
+.libraryOrderChooseBtn:hover {
+  border-color: #c9a84c;
+  background: rgba(201, 168, 76, 0.05);
+}
+
+.libraryOrderChooseBtnTitle {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #e8e0d4;
+}
+
+.libraryOrderChooseBtnSub {
+  font-size: 0.68rem;
+  color: rgba(232, 224, 212, 0.45);
+  line-height: 1.4;
+}
+
+.libraryOrderHint {
+  font-size: 0.68rem;
+  color: rgba(232, 224, 212, 0.4);
+  line-height: 1.5;
+  flex-shrink: 0;
+}
+
+.libraryOrderList {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 6px;
+  padding: 4px;
+}
+
+.libraryOrderList::-webkit-scrollbar { width: 3px; }
+.libraryOrderList::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+
+.libraryOrderRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  transition: background 0.1s;
+}
+
+.libraryOrderRow:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.libraryOrderRowNum {
+  font-size: 0.6rem;
+  color: rgba(232, 224, 212, 0.25);
+  width: 20px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.libraryOrderRowName {
+  flex: 1;
+  font-size: 0.72rem;
+  color: rgba(232, 224, 212, 0.85);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.libraryOrderMoveButtons {
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.libraryOrderMoveBtn {
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  color: rgba(232, 224, 212, 0.4);
+  cursor: pointer;
+  font-size: 0.65rem;
+  padding: 1px 5px;
+  line-height: 1.4;
+  transition: color 0.1s, border-color 0.1s;
+}
+
+.libraryOrderMoveBtn:hover:not(:disabled) {
+  color: #c9a84c;
+  border-color: #c9a84c;
+}
+
+.libraryOrderMoveBtn:disabled {
+  opacity: 0.2;
+  cursor: not-allowed;
+}
+
+.libraryOrderActions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  flex-shrink: 0;
+}
+
+.libraryOrderBackBtn {
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: rgba(232, 224, 212, 0.5);
+  cursor: pointer;
+  font-size: 0.78rem;
+  padding: 8px 16px;
+  transition: color 0.1s, border-color 0.1s;
+}
+
+.libraryOrderBackBtn:hover {
+  color: #e8e0d4;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Edit card pool modal */
+.editPoolBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.editPoolModal {
+  background: #1a1a24;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+  padding: 20px;
+  width: min(480px, 90vw);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.editPoolHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #e8e0d4;
+}
+
+.editPoolClose {
+  background: none;
+  border: none;
+  color: rgba(232, 224, 212, 0.4);
+  cursor: pointer;
+  font-size: 1.1rem;
+  padding: 0 4px;
+}
+
+.editPoolClose:hover { color: #e8e0d4; }
+
+.editPoolHint {
+  font-size: 0.68rem;
+  color: rgba(232, 224, 212, 0.4);
+  line-height: 1.5;
+}
+
+.editPoolTextarea {
+  background: #0f0f13;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: #e8e0d4;
+  font-size: 0.78rem;
+  font-family: monospace;
+  padding: 10px 12px;
+  resize: vertical;
+  outline: none;
+  line-height: 1.5;
+}
+
+.editPoolTextarea:focus { border-color: #c9a84c; }
+
+.editPoolActions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.editPoolCancelBtn {
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: rgba(232, 224, 212, 0.5);
+  cursor: pointer;
+  font-size: 0.78rem;
+  padding: 8px 16px;
+  transition: color 0.1s, border-color 0.1s;
+}
+
+.editPoolCancelBtn:hover:not(:disabled) {
+  color: #e8e0d4;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.editPoolCancelBtn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.editPoolConfirmBtn {
+  background: #8b6914;
+  border: none;
+  border-radius: 6px;
+  color: #f5edda;
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 8px 16px;
+  transition: background 0.15s;
+}
+
+.editPoolConfirmBtn:hover:not(:disabled) { background: #c9a84c; }
+.editPoolConfirmBtn:disabled { opacity: 0.4; cursor: not-allowed; }

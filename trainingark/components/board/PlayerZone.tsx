@@ -54,10 +54,35 @@ function parseCardType(typeLine: string): Card['cardType'] {
 }
 
 export function cleanDecklistLine(rawLine: string): string {
-  let line = rawLine.trim()
-  line = line.replace(/^\d+\s+/, '')
-  line = line.replace(/\s+\([A-Za-z0-9]{2,6}\).*$/, '')
-  return line.trim()
+   let line = rawLine.trim()
+   line = line.replace(/^\d+\s+/, '')
+   line = line.replace(/\s+\([A-Za-z0-9]{2,6}\).*$/, '')
+   return line.trim()
+ }
+
+async function fetchDecklistCards(lines: string[]): Promise<Card[]> {
+  const results: Card[] = []
+  for (let i = 0; i < lines.length; i += 75) {
+    const batch = lines.slice(i, i + 75).filter(Boolean)
+    try {
+      const res = await fetch('https://api.scryfall.com/cards/collection', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifiers: batch.map(name => ({ name })) }),
+      })
+      if (!res.ok) continue
+      const data = await res.json()
+      for (const card of (data.data ?? [])) {
+        results.push({
+          id: card.id,
+          name: card.name,
+          imageUrl: card.image_uris?.normal ?? card.card_faces?.[0]?.image_uris?.normal,
+          cardType: parseCardType(card.type_line ?? ''),
+        })
+      }
+    } catch { /* skip failed batch */ }
+  }
+  return results
 }
 
 export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps) {
@@ -68,6 +93,7 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
     incrementToken, decrementToken, toggleTapped,
     handSizes, setHandSize,
     isDuplicate, dismissDuplicateWarning, dismissedDuplicateWarnings,
+    populateLibrary,
   } = useBuilderStore()
 
   const player = players?.[playerIndex]
@@ -85,6 +111,12 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
   const [editingHandSize, setEditingHandSize] = useState(false)
   const [handSizeInput, setHandSizeInput] = useState('')
   const [zoneMenu, setZoneMenu] = useState<{ x: number; y: number; items: ZoneMenuItem[] } | null>(null)
+  const [editPoolLoading, setEditPoolLoading] = useState(false)
+  const [showEditPool, setShowEditPool] = useState(false)
+  const [editPoolText, setEditPoolText] = useState('')
+  const [showLibraryOrder, setShowLibraryOrder] = useState(false)
+  const [pendingLibraryCards, setPendingLibraryCards] = useState<Card[]>([])
+  const [pendingLibraryTarget, setPendingLibraryTarget] = useState(99)
   const addBtnRef = useRef<HTMLButtonElement>(null)
   const handAddBtnRef = useRef<HTMLButtonElement>(null)
   const graveyardAddBtnRef = useRef<HTMLButtonElement>(null)
@@ -92,6 +124,7 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
   const libraryAddBtnRef = useRef<HTMLButtonElement>(null)
   const handFanRef = useRef<HTMLDivElement>(null)
   const [fanWidth, setFanWidth] = useState(200)
+  const [fetchingCards, setFetchingCards] = useState(false)
 
   useEffect(() => {
     if (!handFanRef.current) return
@@ -165,6 +198,18 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
     }
     updatePlayer(playerIndex, updated)
     confirmSetup(playerIndex, cleanedDl)
+
+    if (cleanedDl.length > 0) {
+      const targetCount = partial.zones?.library?.cardCount ?? 99
+      setFetchingCards(true)
+      fetchDecklistCards(cleanedDl)
+        .then(cards => {
+          setPendingLibraryCards(cards)
+          setPendingLibraryTarget(targetCount)
+          setShowLibraryOrder(true)
+        })
+        .finally(() => setFetchingCards(false))
+    }
   }
 
   function commitLife() {
@@ -205,6 +250,25 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
     moveCard(playerIndex, card.id, 'hand', 'graveyard')
   }
 
+  function handleEditPoolConfirm() {
+    const lines = editPoolText.split('\n').map(cleanDecklistLine).filter(Boolean)
+    setEditPoolLoading(true)
+    fetchDecklistCards(lines)
+      .then(cards => {
+        confirmSetup(playerIndex, lines)
+        setPendingLibraryCards(cards)
+        setPendingLibraryTarget(p.zones.library.cardCount ?? 99)
+        setShowLibraryOrder(true)
+        setShowEditPool(false)
+      })
+      .finally(() => setEditPoolLoading(false))
+  }
+
+  function handleLibraryOrderConfirm(orderedCards: Card[]) {
+    populateLibrary(playerIndex, orderedCards)
+    setShowLibraryOrder(false)
+  }
+
   function openZoneMenu(e: React.MouseEvent, items: ZoneMenuItem[]) {
     e.stopPropagation()
     setZoneMenu({ x: e.clientX, y: e.clientY, items })
@@ -220,6 +284,20 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
         label: 'Add Token', action: () => {
           const rect = addBtnRef.current?.getBoundingClientRect()
           if (rect) handleAddCard('battlefield', rect, true)
+        },
+      },
+      {
+        label: 'Edit card pool', action: () => {
+          setEditPoolText(decklist.join('\n'))
+          setShowEditPool(true)
+        },
+      },
+      {
+        label: 'Set library order', action: () => {
+          const realCards = p.zones.library.cards.filter(c => !c.faceDown)
+          setPendingLibraryCards(realCards)
+          setPendingLibraryTarget(p.zones.library.cardCount ?? 99)
+          setShowLibraryOrder(true)
         },
       },
     ]
@@ -695,6 +773,45 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
           onClose={() => setZoneMenu(null)}
         />
       )}
+
+      {showEditPool && createPortal(
+        <div className={styles.editPoolBackdrop}>
+          <div className={styles.editPoolModal}>
+            <div className={styles.editPoolHeader}>
+              <span>Edit card pool — {p.name}</span>
+              <button className={styles.editPoolClose} onClick={() => setShowEditPool(false)}>×</button>
+            </div>
+            <p className={styles.editPoolHint}>
+              Paste your decklist. The library will be replaced with these cards. Use Shuffle to randomize.
+            </p>
+            <textarea
+              className={styles.editPoolTextarea}
+              value={editPoolText}
+              onChange={e => setEditPoolText(e.target.value)}
+              rows={12}
+              placeholder={'1 Sol Ring\n1 Command Tower\n...'}
+              spellCheck={false}
+            />
+            <div className={styles.editPoolActions}>
+              <button
+                className={styles.editPoolCancelBtn}
+                onClick={() => setShowEditPool(false)}
+                disabled={editPoolLoading}
+              >
+                Cancel
+              </button>
+              <button
+                className={styles.editPoolConfirmBtn}
+                onClick={handleEditPoolConfirm}
+                disabled={editPoolLoading}
+              >
+                {editPoolLoading ? 'Fetching cards...' : 'Update card pool'}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   )
 }
@@ -744,6 +861,118 @@ function ExpandedRow({ card, onMove, onCastToStack, onRemove, onCreateTokenCopy,
         </div>,
         document.body
       )}
+    </div>
+  )
+}
+
+function LibraryOrderModal({ cards, targetCount, onConfirm, onClose }: {
+  cards: Card[]
+  targetCount: number
+  onConfirm: (cards: Card[]) => void
+  onClose: () => void
+}) {
+  const [mode, setMode] = useState<'choose' | 'manual'>('choose')
+  const [orderedCards, setOrderedCards] = useState<Card[]>(cards)
+
+  function makePlaceholder(i: number): Card {
+    return {
+      id: `placeholder-${Date.now()}-${i}`,
+      name: 'Unknown card',
+      cardType: 'instant',
+      faceDown: true,
+    }
+  }
+
+  // Builds final library array. drawCard pulls from the END of the array,
+  // so drawn-first cards go at the end. Placeholders fill the front.
+  function buildFinalLibrary(ordered: Card[]): Card[] {
+    const placeholderCount = Math.max(0, targetCount - ordered.length)
+    const placeholders = Array.from({ length: placeholderCount }, (_, i) => makePlaceholder(i))
+    // UI index 0 = drawn first = last in array, so reverse
+    return [...placeholders, ...[...ordered].reverse()]
+  }
+
+  function handleShuffle() {
+    const shuffled = [...cards]
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      const tmp = shuffled[i]; shuffled[i] = shuffled[j]; shuffled[j] = tmp
+    }
+    onConfirm(buildFinalLibrary(shuffled))
+  }
+
+  function moveUp(index: number) {
+    if (index === 0) return
+    const updated = [...orderedCards]
+    ;[updated[index - 1], updated[index]] = [updated[index], updated[index - 1]]
+    setOrderedCards(updated)
+  }
+
+  function moveDown(index: number) {
+    if (index === orderedCards.length - 1) return
+    const updated = [...orderedCards]
+    ;[updated[index + 1], updated[index]] = [updated[index], updated[index + 1]]
+    setOrderedCards(updated)
+  }
+
+  return (
+    <div className={styles.libraryOrderBackdrop}>
+      <div className={styles.libraryOrderModal}>
+        <div className={styles.libraryOrderHeader}>
+          <span>Set library order — {cards.length} cards{targetCount > cards.length ? ` + ${targetCount - cards.length} unknown` : ''}</span>
+          <button className={styles.editPoolClose} onClick={onClose}>×</button>
+        </div>
+
+        {mode === 'choose' ? (
+          <div className={styles.libraryOrderChoose}>
+            <button className={styles.libraryOrderChooseBtn} onClick={handleShuffle}>
+              <span className={styles.libraryOrderChooseBtnTitle}>Shuffle</span>
+              <span className={styles.libraryOrderChooseBtnSub}>Randomize card order. Unknown cards fill the bottom.</span>
+            </button>
+            <button className={styles.libraryOrderChooseBtn} onClick={() => setMode('manual')}>
+              <span className={styles.libraryOrderChooseBtnTitle}>Set order manually</span>
+              <span className={styles.libraryOrderChooseBtnSub}>Arrange cards. Row 1 is drawn first. Unknown cards fill below.</span>
+            </button>
+          </div>
+        ) : (
+          <>
+            <p className={styles.libraryOrderHint}>Row 1 is drawn first. Move cards up to put them on top of the library.</p>
+            <div className={styles.libraryOrderList}>
+              {orderedCards.map((card, i) => (
+                <div key={card.id} className={styles.libraryOrderRow}>
+                  <span className={styles.libraryOrderRowNum}>{i + 1}</span>
+                  <span className={styles.libraryOrderRowName}>{card.name}</span>
+                  <div className={styles.libraryOrderMoveButtons}>
+                    <button
+                      className={styles.libraryOrderMoveBtn}
+                      onClick={() => moveUp(i)}
+                      disabled={i === 0}
+                      title="Move up (drawn sooner)"
+                    >↑</button>
+                    <button
+                      className={styles.libraryOrderMoveBtn}
+                      onClick={() => moveDown(i)}
+                      disabled={i === orderedCards.length - 1}
+                      title="Move down (drawn later)"
+                    >↓</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className={styles.libraryOrderActions}>
+              <button className={styles.libraryOrderBackBtn} onClick={() => setMode('choose')}>
+                Back
+              </button>
+              <button
+                className={styles.editPoolConfirmBtn}
+                onClick={() => onConfirm(buildFinalLibrary(orderedCards))}
+              >
+                Confirm order
+              </button>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   )
 }
