@@ -11,6 +11,14 @@ const DIFFICULTY_LABELS = {
   advanced: 'Advanced',
 } as const
 
+interface ScenarioListItem {
+  id: string
+  title: string
+  description: string
+  difficulty: string
+  updatedAt: string
+}
+
 export function BuilderHeader() {
   const {
     scenarioTitle, setScenarioTitle,
@@ -18,6 +26,7 @@ export function BuilderHeader() {
     difficulty, setDifficulty,
     players, steps, decklists,
     firstPlayerIndex, currentTurnPlayerIndex, turnNumber, handSizes,
+    loadScenario,
   } = useBuilderStore()
 
   const [editingTitle, setEditingTitle] = useState(false)
@@ -26,6 +35,10 @@ export function BuilderHeader() {
   const [saving, setSaving] = useState(false)
   const [savedScenarioId, setSavedScenarioId] = useState<string | null>(null)
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'error'>('idle')
+  const [showLoad, setShowLoad] = useState(false)
+  const [scenarioList, setScenarioList] = useState<ScenarioListItem[]>([])
+  const [loadingList, setLoadingList] = useState(false)
+  const [loadingScenario, setLoadingScenario] = useState(false)
 
   function commitTitle() {
     if (titleInput.trim()) setScenarioTitle(titleInput.trim())
@@ -77,6 +90,44 @@ export function BuilderHeader() {
     }
   }
 
+  async function openLoadModal() {
+    setShowLoad(true)
+    setLoadingList(true)
+    try {
+      const res = await fetch('/api/scenarios')
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const list = await res.json()
+      setScenarioList(list)
+    } catch (err) {
+      console.error('Failed to load scenario list:', err)
+      setScenarioList([])
+    } finally {
+      setLoadingList(false)
+    }
+  }
+
+  async function handleLoadScenario(id: string) {
+    if (loadingScenario) return
+    setLoadingScenario(true)
+    try {
+      const res = await fetch(`/api/scenarios/${id}`)
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const scenario = await res.json()
+      loadScenario({
+        title: scenario.title,
+        description: scenario.description,
+        difficulty: scenario.difficulty,
+        data: scenario.data,
+      })
+      setSavedScenarioId(scenario.id)
+      setShowLoad(false)
+    } catch (err) {
+      console.error('Failed to load scenario:', err)
+    } finally {
+      setLoadingScenario(false)
+    }
+  }
+
   return (
     <div className={styles.header}>
       <div className={styles.left}>
@@ -109,6 +160,9 @@ export function BuilderHeader() {
       <div className={styles.right}>
         {saveStatus === 'saved' && <span className={styles.saveStatusOk}>Saved</span>}
         {saveStatus === 'error' && <span className={styles.saveStatusError}>Save failed</span>}
+        <button className={styles.detailsBtn} onClick={openLoadModal}>
+          Load
+        </button>
         <button
           className={styles.saveScenarioBtn}
           onClick={handleSaveScenario}
@@ -171,6 +225,44 @@ export function BuilderHeader() {
             <button className={styles.doneBtn} onClick={() => setShowDetails(false)}>
               Done
             </button>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {showLoad && createPortal(
+        <div className={styles.detailsBackdrop} onClick={() => setShowLoad(false)}>
+          <div className={styles.detailsModal} onClick={e => e.stopPropagation()}>
+            <div className={styles.detailsHeader}>
+              <span className={styles.detailsTitle}>Load scenario</span>
+              <button className={styles.detailsClose} onClick={() => setShowLoad(false)}>×</button>
+            </div>
+
+            <p className={styles.loadWarning}>
+              Loading replaces everything currently in the builder. Save first if you want to keep your work.
+            </p>
+
+            {loadingList ? (
+              <p className={styles.commandersEmpty}>Loading...</p>
+            ) : scenarioList.length === 0 ? (
+              <p className={styles.commandersEmpty}>No saved scenarios.</p>
+            ) : (
+              <div className={styles.loadList}>
+                {scenarioList.map(s => (
+                  <button
+                    key={s.id}
+                    className={styles.loadRow}
+                    onClick={() => handleLoadScenario(s.id)}
+                    disabled={loadingScenario}
+                  >
+                    <span className={styles.loadRowTitle}>{s.title}</span>
+                    <span className={styles.loadRowMeta}>
+                      {s.difficulty} · {new Date(s.updatedAt).toLocaleDateString()}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>,
         document.body

@@ -76,6 +76,19 @@ interface BuilderState {
   editLogLine: (index: number, text: string) => void
   removeLogLine: (index: number) => void
   undoLastAction: () => void
+  loadScenario: (payload: {
+    title: string
+    description: string
+    difficulty: 'beginner' | 'intermediate' | 'advanced'
+    data: {
+      steps: ScenarioStep[]
+      decklists: string[][]
+      firstPlayerIndex: number
+      currentTurnPlayerIndex: number
+      turnNumber: number
+      handSizes: [number, number, number, number]
+    }
+  }) => void
   scenarioTitle: string
   scenarioDescription: string
   difficulty: 'beginner' | 'intermediate' | 'advanced'
@@ -257,6 +270,31 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
   deleteStep: (stepId) => {
     set(state => ({ steps: state.steps.filter(s => s.id !== stepId) }))
   },
+
+  loadScenario: (payload) => {
+    const { data } = payload
+    const lastStep = data.steps[data.steps.length - 1]
+    if (!lastStep) return
+    history = []
+    set({
+      scenarioTitle: payload.title,
+      scenarioDescription: payload.description,
+      difficulty: payload.difficulty,
+      steps: data.steps,
+      decklists: data.decklists,
+      firstPlayerIndex: data.firstPlayerIndex,
+      currentTurnPlayerIndex: data.currentTurnPlayerIndex,
+      turnNumber: data.turnNumber,
+      handSizes: data.handSizes,
+      players: JSON.parse(JSON.stringify(lastStep.boardState.players)),
+      stack: JSON.parse(JSON.stringify(lastStep.boardState.stack)),
+      logLines: [],
+      lastSavedLogIndex: 0,
+      setupComplete: [true, true, true, true],
+      scenarioStarted: true,
+    })
+  },
+
 
   isDuplicate: (playerIndex, cardName, excludeCardId) => {
     const state = get()
