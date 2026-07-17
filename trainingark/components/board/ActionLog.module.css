@@ -292,6 +292,21 @@
   border-color: #e07070;
 }
 
+.discardCardDone {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.discardCardDone:hover {
+  transform: none;
+  box-shadow: none;
+  border-color: transparent;
+}
+
+.discardCardDone .discardCardOverlay {
+  display: none;
+}
+
 .discardCardOverlay {
   position: absolute;
   bottom: 0;
@@ -361,17 +376,537 @@
 .discardDoneBtn:hover:not(:disabled) { background: #c9a84c; }
 .discardDoneBtn:disabled { opacity: 0.4; cursor: not-allowed; }
 
-.discardCardDone {
-  cursor: default;
-  opacity: 0.5;
+/* Save step modal */
+.saveModalBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.discardCardDone:hover {
-  transform: none;
-  box-shadow: none;
-  border-color: transparent;
+.saveModal {
+  background: #1a1a24;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+  padding: 20px;
+  width: min(360px, 90vw);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
-.discardCardDone .discardCardOverlay {
-  display: none;
+.saveModalTitle {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #e8e0d4;
+}
+
+.saveModalInput {
+  background: #0f0f13;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: #e8e0d4;
+  font-size: 0.82rem;
+  padding: 8px 10px;
+  outline: none;
+}
+
+.saveModalInput:focus { border-color: #c9a84c; }
+
+.saveModalActions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.saveModalCancel {
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: rgba(232, 224, 212, 0.5);
+  cursor: pointer;
+  font-size: 0.78rem;
+  padding: 7px 14px;
+}
+
+.saveModalCancel:hover {
+  color: #e8e0d4;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.saveModalConfirm {
+  background: #8b6914;
+  border: none;
+  border-radius: 6px;
+  color: #f5edda;
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 7px 14px;
+  transition: background 0.15s;
+}
+
+.saveModalConfirm:hover { background: #c9a84c; }
+
+/* Steps strip */
+.stepsStrip {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  flex-shrink: 0;
+}
+
+.stepsToggle {
+  width: 100%;
+  background: none;
+  border: none;
+  color: rgba(232, 224, 212, 0.6);
+  cursor: pointer;
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 8px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: color 0.1s;
+}
+
+.stepsToggle:hover { color: #e8e0d4; }
+
+.stepsToggleArrow {
+  font-size: 0.5rem;
+  color: rgba(232, 224, 212, 0.3);
+}
+
+.stepsList {
+  display: flex;
+  flex-direction: column;
+  padding: 0 10px 8px;
+  gap: 2px;
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+.stepsList::-webkit-scrollbar { width: 3px; }
+.stepsList::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+
+.stepRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 4px;
+  border-radius: 4px;
+  transition: background 0.1s;
+}
+
+.stepRow:hover { background: rgba(255, 255, 255, 0.04); }
+
+.stepRowNum {
+  font-size: 0.6rem;
+  color: rgba(232, 224, 212, 0.25);
+  width: 14px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.stepRowLabel {
+  flex: 1;
+  font-size: 0.7rem;
+  color: rgba(232, 224, 212, 0.8);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stepRowLabel:hover { color: #c9a84c; }
+
+.stepRowMeta {
+  font-size: 0.58rem;
+  color: rgba(232, 224, 212, 0.3);
+  flex-shrink: 0;
+}
+
+.stepRowDelete {
+  background: none;
+  border: none;
+  color: rgba(232, 224, 212, 0.2);
+  cursor: pointer;
+  font-size: 0.85rem;
+  padding: 0 2px;
+  flex-shrink: 0;
+  line-height: 1;
+  transition: color 0.1s;
+}
+
+.stepRowDelete:hover { color: #e07070; }
+
+.stepDeleteConfirm {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.stepDeleteYes {
+  background: none;
+  border: 1px solid rgba(224, 112, 112, 0.4);
+  border-radius: 3px;
+  color: #e07070;
+  cursor: pointer;
+  font-size: 0.56rem;
+  padding: 1px 6px;
+}
+
+.stepDeleteYes:hover { background: rgba(224, 112, 112, 0.15); }
+
+.stepDeleteNo {
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+  color: rgba(232, 224, 212, 0.5);
+  cursor: pointer;
+  font-size: 0.56rem;
+  padding: 1px 6px;
+}
+
+.stepDeleteNo:hover { color: #e8e0d4; }
+
+/* Saved log lines are dimmed */
+.lineSaved .line {
+  color: rgba(232, 224, 212, 0.35);
+}
+
+/* Step view modal */
+.stepViewBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stepViewModal {
+  background: #1a1a24;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+  padding: 20px;
+  width: min(480px, 90vw);
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow-y: auto;
+}
+
+.stepViewHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.stepViewTitle {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #e8e0d4;
+}
+
+.stepViewClose {
+  background: none;
+  border: none;
+  color: rgba(232, 224, 212, 0.4);
+  cursor: pointer;
+  font-size: 1.1rem;
+  padding: 0 4px;
+}
+
+.stepViewClose:hover { color: #e8e0d4; }
+
+.stepViewSection {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.stepViewSectionTitle {
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: rgba(232, 224, 212, 0.4);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.stepViewLog {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: #0f0f13;
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+
+.stepViewLogLine {
+  font-size: 0.7rem;
+  color: rgba(232, 224, 212, 0.65);
+  line-height: 1.5;
+}
+
+.stepViewEmpty {
+  font-size: 0.7rem;
+  color: rgba(232, 224, 212, 0.3);
+  font-style: italic;
+}
+
+.stepViewBoard {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: #0f0f13;
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+
+.stepViewPlayer {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.stepViewPlayerName {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: rgba(232, 224, 212, 0.8);
+  flex-shrink: 0;
+}
+
+.stepViewPlayerStats {
+  font-size: 0.62rem;
+  color: rgba(232, 224, 212, 0.4);
+}
+
+.stepViewStack {
+  font-size: 0.62rem;
+  color: #c9a84c;
+  margin-top: 4px;
+}
+
+.stepViewPrompt {
+  font-size: 0.72rem;
+  color: rgba(232, 224, 212, 0.7);
+  line-height: 1.5;
+  background: #0f0f13;
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+
+/* Decision point form in save modal */
+.saveModalWide {
+  width: min(520px, 90vw);
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
+.decisionToggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.74rem;
+  color: rgba(232, 224, 212, 0.7);
+  cursor: pointer;
+  user-select: none;
+}
+
+.decisionToggle input {
+  accent-color: #c9a84c;
+  cursor: pointer;
+}
+
+.decisionForm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  padding-top: 12px;
+}
+
+.decisionPromptInput {
+  background: #0f0f13;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: #e8e0d4;
+  font-size: 0.76rem;
+  padding: 8px 10px;
+  resize: vertical;
+  outline: none;
+  line-height: 1.5;
+}
+
+.decisionPromptInput:focus { border-color: #c9a84c; }
+
+.decisionChoicesHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.decisionWarning {
+  font-size: 0.6rem;
+  color: #e07070;
+}
+
+.choiceRow {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: #0f0f13;
+  border-radius: 6px;
+  padding: 8px;
+}
+
+.choiceRowTop {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.choiceLabelInput {
+  flex: 1;
+  background: #13131a;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  color: #e8e0d4;
+  font-size: 0.74rem;
+  padding: 5px 8px;
+  outline: none;
+}
+
+.choiceLabelInput:focus { border-color: #c9a84c; }
+
+.choiceQualitySelect {
+  background: #13131a;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  color: #e8e0d4;
+  font-size: 0.72rem;
+  padding: 5px 6px;
+  outline: none;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.choiceRemoveBtn {
+  background: none;
+  border: none;
+  color: rgba(232, 224, 212, 0.25);
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 0 2px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.choiceRemoveBtn:hover { color: #e07070; }
+
+.choiceExplanationInput {
+  background: #13131a;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  color: #e8e0d4;
+  font-size: 0.7rem;
+  padding: 5px 8px;
+  resize: vertical;
+  outline: none;
+  line-height: 1.45;
+}
+
+.choiceExplanationInput:focus { border-color: #c9a84c; }
+
+.addChoiceBtn {
+  background: none;
+  border: 1px dashed rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  color: rgba(232, 224, 212, 0.5);
+  cursor: pointer;
+  font-size: 0.72rem;
+  padding: 6px;
+  transition: color 0.1s, border-color 0.1s;
+}
+
+.addChoiceBtn:hover {
+  color: #c9a84c;
+  border-color: #c9a84c;
+}
+
+/* Decision marker in step rows */
+.stepRowDecision {
+  color: #c9a84c;
+  font-size: 0.6rem;
+}
+
+/* Choices in step view modal */
+.stepViewChoices {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.stepViewChoice {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  background: #0f0f13;
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+
+.stepViewChoiceQuality {
+  font-size: 0.58rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 2px 6px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.quality_best {
+  background: rgba(106, 176, 106, 0.15);
+  color: #6ab06a;
+}
+
+.quality_ok {
+  background: rgba(201, 168, 76, 0.15);
+  color: #c9a84c;
+}
+
+.quality_blunder {
+  background: rgba(224, 112, 112, 0.15);
+  color: #e07070;
+}
+
+.stepViewChoiceBody {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.stepViewChoiceLabel {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: rgba(232, 224, 212, 0.85);
+}
+
+.stepViewChoiceExplanation {
+  font-size: 0.66rem;
+  color: rgba(232, 224, 212, 0.5);
+  line-height: 1.45;
 }

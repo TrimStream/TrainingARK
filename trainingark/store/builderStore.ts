@@ -3,6 +3,29 @@ import type { Player, StackItem, Card } from '@/types/board'
 
 export type EditableZone = 'battlefield' | 'hand' | 'graveyard' | 'exile' | 'library' | 'command'
 
+export interface DecisionChoice {
+  id: string
+  label: string
+  quality: 'best' | 'ok' | 'blunder'
+  explanation: string
+}
+
+export interface DecisionPoint {
+  prompt: string
+  choices: DecisionChoice[]
+}
+
+export interface ScenarioStep {
+  id: string
+  label: string
+  logLines: string[]
+  boardState: {
+    players: [Player, Player, Player, Player]
+    stack: StackItem[]
+  }
+  decisionPoint?: DecisionPoint
+}
+
 interface BuilderState {
   players: [Player, Player, Player, Player] | null
   stack: StackItem[]
@@ -15,10 +38,12 @@ interface BuilderState {
   currentTurnPlayerIndex: number
   turnNumber: number
   handSizes: [number, number, number, number]
+  steps: ScenarioStep[]
+  lastSavedLogIndex: number
 
   updatePlayer: (index: number, player: Player) => void
   confirmSetup: (index: number, decklist: string[]) => void
-  moveCard: (playerIndex: number, cardId: string, fromZone: EditableZone, toZone: EditableZone) => void
+  moveCard: (playerIndex: number, cardId: string, fromZone: EditableZone, toZone: EditableZone, position?: 'top' | 'bottom') => void
   addCard: (playerIndex: number, zone: EditableZone, card: Card) => void
   silentAddCard: (playerIndex: number, zone: EditableZone, card: Card) => void
   removeCard: (playerIndex: number, cardId: string) => void
@@ -36,19 +61,27 @@ interface BuilderState {
   toggleTapped: (playerIndex: number, cardId: string) => void
   drawCard: (playerIndex: number) => void
   shuffleLibrary: (playerIndex: number) => void
+  populateLibrary: (playerIndex: number, cards: Card[]) => void
   untapAll: (playerIndex: number) => void
   passTurn: () => void
   setFirstPlayer: (index: number) => void
   setCurrentTurnPlayer: (index: number) => void
   setTurnNumber: (n: number) => void
   setHandSize: (playerIndex: number, size: number) => void
+  saveStep: (label: string) => void
+  deleteStep: (stepId: string) => void
   dismissDuplicateWarning: (cardId: string) => void
   isDuplicate: (playerIndex: number, cardName: string, excludeCardId?: string) => boolean
   addLogLine: (text: string) => void
   editLogLine: (index: number, text: string) => void
   removeLogLine: (index: number) => void
   undoLastAction: () => void
-  populateLibrary: (playerIndex: number, cards: Card[]) => void
+  scenarioTitle: string
+  scenarioDescription: string
+  difficulty: 'beginner' | 'intermediate' | 'advanced'
+  setScenarioTitle: (title: string) => void
+  setScenarioDescription: (desc: string) => void
+  setDifficulty: (d: 'beginner' | 'intermediate' | 'advanced') => void
 }
 
 type Snapshot = {
@@ -95,12 +128,10 @@ function pushHistory(state: { players: [Player, Player, Player, Player] | null, 
   }]
 }
 
-// Returns true for triggered/activated abilities — these never move cards between zones
 function isAbility(type: StackItem['type']): boolean {
   return type === 'triggered' || type === 'activated'
 }
 
-// Builds a Card object from a StackItem for zone placement after resolution
 function cardFromStackItem(item: StackItem): Card {
   return {
     id: item.sourceCardId,
@@ -110,9 +141,6 @@ function cardFromStackItem(item: StackItem): Card {
   }
 }
 
-// Places a card into a specific zone for a player identified by name.
-// Used by resolveStack, removeFromStack, exileFromStack to avoid repeating
-// the playerIndex lookup + zone append + cardCount increment pattern.
 function placeCardInZone(
   players: [Player, Player, Player, Player],
   controllerName: string,
@@ -135,8 +163,6 @@ function placeCardInZone(
   return updated
 }
 
-// Increments the stackCount of an existing same-name token on the battlefield.
-// Returns null if no existing token was found (caller should add a new card instead).
 function stackExistingToken(
   players: [Player, Player, Player, Player],
   playerIndex: number,
@@ -171,6 +197,11 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
   currentTurnPlayerIndex: 0,
   turnNumber: 1,
   handSizes: [7, 7, 7, 7],
+  steps: [],
+  lastSavedLogIndex: 0,
+  scenarioTitle: 'Untitled Scenario',
+  scenarioDescription: '',
+  difficulty: 'beginner',
 
   updatePlayer: (index, player) => {
     const current = get().players
@@ -179,6 +210,10 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
     updated[index] = player
     set({ players: updated })
   },
+
+  setScenarioTitle: (title) => set({ scenarioTitle: title }),
+  setScenarioDescription: (desc) => set({ scenarioDescription: desc }),
+  setDifficulty: (d) => set({ difficulty: d }),
 
   confirmSetup: (index, decklist) => {
     const current = get().setupComplete
@@ -199,6 +234,28 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
     const current = [...get().handSizes] as [number, number, number, number]
     current[playerIndex] = size
     set({ handSizes: current })
+  },
+
+  saveStep: (label) => {
+    const state = get()
+    if (!state.players) return
+    const newStep: ScenarioStep = {
+      id: `step-${Date.now()}`,
+      label: label || `Step ${state.steps.length + 1}`,
+      logLines: state.logLines.slice(state.lastSavedLogIndex),
+      boardState: {
+        players: JSON.parse(JSON.stringify(state.players)),
+        stack: JSON.parse(JSON.stringify(state.stack)),
+      },
+    }
+    set({
+      steps: [...state.steps, newStep],
+      lastSavedLogIndex: state.logLines.length,
+    })
+  },
+
+  deleteStep: (stepId) => {
+    set(state => ({ steps: state.steps.filter(s => s.id !== stepId) }))
   },
 
   isDuplicate: (playerIndex, cardName, excludeCardId) => {
@@ -298,7 +355,7 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
     })
   },
 
-  moveCard: (playerIndex, cardId, fromZone, toZone) => {
+  moveCard: (playerIndex, cardId, fromZone, toZone, position = 'top') => {
     const state = get()
     if (!state.players) return
     pushHistory(state)
@@ -313,6 +370,13 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
 
     const fromCount = player.zones[fromZone].cardCount ?? player.zones[fromZone].cards.length
     const toCount = player.zones[toZone].cardCount ?? player.zones[toZone].cards.length
+    const cleanCard = { ...card, tapped: false }
+
+    // Library array: end = top (drawn first), start = bottom.
+    // 'bottom' prepends, 'top' (and every non-library zone) appends.
+    const toCards = position === 'bottom'
+      ? [cleanCard, ...player.zones[toZone].cards]
+      : [...player.zones[toZone].cards, cleanCard]
 
     const updated = [...state.players] as [Player, Player, Player, Player]
     updated[playerIndex] = {
@@ -320,11 +384,12 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
       zones: {
         ...player.zones,
         [fromZone]: { ...player.zones[fromZone], cards: fromCardsArr, cardCount: Math.max(0, fromCount - 1) },
-        [toZone]: { ...player.zones[toZone], cards: [...player.zones[toZone].cards, { ...card, tapped: false }], cardCount: toCount + 1 },
+        [toZone]: { ...player.zones[toZone], cards: toCards, cardCount: toCount + 1 },
       },
     }
 
-    const logLine = `${card.name} moves from ${player.name}'s ${ZONE_NAMES[fromZone]} to ${ZONE_NAMES[toZone]}.`
+    const positionLabel = toZone === 'library' ? (position === 'bottom' ? 'bottom of library' : 'top of library') : ZONE_NAMES[toZone]
+    const logLine = `${card.name} moves from ${player.name}'s ${ZONE_NAMES[fromZone]} to ${positionLabel}.`
     set({ players: updated, logLines: state.scenarioStarted ? [...state.logLines, logLine] : state.logLines })
   },
 
@@ -335,7 +400,6 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
 
     const player = state.players[playerIndex]
 
-    // Token stacking: increment existing same-name token instead of adding a new card
     if (card.isToken && zone === 'battlefield') {
       const result = stackExistingToken(state.players, playerIndex, card.name)
       if (result) {
@@ -409,7 +473,6 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
     }
     if (!found) return
 
-    // Restore library count when removing from non-library zone
     if (removedFromZone && removedFromZone !== 'library') {
       const libCount = updatedZones.library.cardCount ?? updatedZones.library.cards.length
       updatedZones.library = { ...updatedZones.library, cardCount: libCount + 1 }
@@ -428,7 +491,6 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
     const source = player.zones.battlefield.cards.find((c: Card) => c.id === cardId)
     if (!source) return
 
-    // Stack with existing same-name token (excluding the source card itself)
     const result = stackExistingToken(state.players, playerIndex, source.name, cardId)
     if (result) {
       const logLine = `${player.name} creates another token copy of ${source.name} (×${result.newCount}).`
@@ -514,7 +576,6 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
 
     let updated = [...state.players] as [Player, Player, Player, Player]
 
-    // Only 'cast' removes the card from its zone; triggered/activated leave the permanent in place
     if (type === 'cast') {
       const fromCardsArr = [...player.zones[fromZone].cards]
       const removeIndex = fromCardsArr.findIndex((c: Card) => c.id === cardId)
@@ -557,7 +618,6 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
     const item = state.stack.find(s => s.id === itemId)
     if (!item) return
 
-    // Abilities resolve without moving any card
     if (isAbility(item.type)) {
       set({
         stack: state.stack.filter(s => s.id !== itemId),
@@ -566,7 +626,6 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
       return
     }
 
-    // Cast spells: permanents go to battlefield, non-permanents to graveyard
     const isPermanent = item.cardType ? PERMANENT_TYPES.has(item.cardType) : false
     const zone = isPermanent ? 'battlefield' : 'graveyard'
     const updated = placeCardInZone(state.players, item.controller, zone, cardFromStackItem(item))
@@ -588,7 +647,6 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
     const item = state.stack.find(s => s.id === itemId)
     if (!item) return
 
-    // Abilities just disappear — no card movement
     if (isAbility(item.type)) {
       set({
         stack: state.stack.filter(s => s.id !== itemId),
@@ -597,7 +655,6 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
       return
     }
 
-    // Countered spells go to graveyard
     const updated = placeCardInZone(state.players, item.controller, 'graveyard', cardFromStackItem(item))
     set({
       players: updated,
@@ -613,7 +670,6 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
     const item = state.stack.find(s => s.id === itemId)
     if (!item) return
 
-    // Abilities just disappear — no card movement
     if (isAbility(item.type)) {
       set({
         stack: state.stack.filter(s => s.id !== itemId),
@@ -721,6 +777,22 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
     })
   },
 
+  populateLibrary: (playerIndex, cards) => {
+    const state = get()
+    if (!state.players) return
+    pushHistory(state)
+    const player = state.players[playerIndex]
+    const updated = [...state.players] as [Player, Player, Player, Player]
+    updated[playerIndex] = {
+      ...player,
+      zones: {
+        ...player.zones,
+        library: { cards, revealed: false, cardCount: cards.length },
+      },
+    }
+    set({ players: updated })
+  },
+
   addLogLine: (text) => set(state => ({ logLines: [...state.logLines, text] })),
 
   editLogLine: (index, text) => {
@@ -740,21 +812,5 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
     const snapshot = history[history.length - 1]
     history = history.slice(0, -1)
     set({ players: snapshot.players, stack: snapshot.stack, logLines: snapshot.logLines })
-  },
-
-  populateLibrary: (playerIndex, cards) => {
-    const state = get()
-    if (!state.players) return
-    pushHistory(state)
-    const player = state.players[playerIndex]
-    const updated = [...state.players] as [Player, Player, Player, Player]
-    updated[playerIndex] = {
-      ...player,
-      zones: { ...player.zones, library: { ...player.zones.library, cards, cardCount: cards.length } },
-    }
-    set({
-      players: updated,
-      logLines: state.scenarioStarted ? [...state.logLines, `${player.name}'s library is reorganized.`] : state.logLines,
-    })
   },
 }))

@@ -54,11 +54,11 @@ function parseCardType(typeLine: string): Card['cardType'] {
 }
 
 export function cleanDecklistLine(rawLine: string): string {
-   let line = rawLine.trim()
-   line = line.replace(/^\d+\s+/, '')
-   line = line.replace(/\s+\([A-Za-z0-9]{2,6}\).*$/, '')
-   return line.trim()
- }
+  let line = rawLine.trim()
+  line = line.replace(/^\d+\s+/, '')
+  line = line.replace(/\s+\([A-Za-z0-9]{2,6}\).*$/, '')
+  return line.trim()
+}
 
 async function fetchDecklistCards(lines: string[]): Promise<Card[]> {
   const results: Card[] = []
@@ -117,6 +117,7 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
   const [showLibraryOrder, setShowLibraryOrder] = useState(false)
   const [pendingLibraryCards, setPendingLibraryCards] = useState<Card[]>([])
   const [pendingLibraryTarget, setPendingLibraryTarget] = useState(99)
+  const [fetchingCards, setFetchingCards] = useState(false)
   const addBtnRef = useRef<HTMLButtonElement>(null)
   const handAddBtnRef = useRef<HTMLButtonElement>(null)
   const graveyardAddBtnRef = useRef<HTMLButtonElement>(null)
@@ -124,7 +125,6 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
   const libraryAddBtnRef = useRef<HTMLButtonElement>(null)
   const handFanRef = useRef<HTMLDivElement>(null)
   const [fanWidth, setFanWidth] = useState(200)
-  const [fetchingCards, setFetchingCards] = useState(false)
 
   useEffect(() => {
     if (!handFanRef.current) return
@@ -151,10 +151,11 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
 
   function handleMove(cardId: string, target: ZoneTarget) {
     const toZone = ZONE_TARGET_MAP[target]
+    const position = target === 'library-bottom' ? 'bottom' : 'top'
     if (!player) return
     for (const [zoneName, zone] of Object.entries(player.zones)) {
       if (zone.cards.find((c: Card) => c.id === cardId)) {
-        moveCard(playerIndex, cardId, zoneName as EditableZone, toZone)
+        moveCard(playerIndex, cardId, zoneName as EditableZone, toZone, position)
         return
       }
     }
@@ -236,10 +237,10 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
     setEditingHandSize(false)
   }
 
-  function moveAllFromZone(fromZone: EditableZone, toZone: EditableZone) {
+  function moveAllFromZone(fromZone: EditableZone, toZone: EditableZone, position: 'top' | 'bottom' = 'top') {
     if (!player) return
     const cards = [...player.zones[fromZone].cards]
-    cards.forEach(card => moveCard(playerIndex, card.id, fromZone, toZone))
+    cards.forEach(card => moveCard(playerIndex, card.id, fromZone, toZone, position))
   }
 
   function discardRandom() {
@@ -251,13 +252,14 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
   }
 
   function handleEditPoolConfirm() {
+    if (!player) return
     const lines = editPoolText.split('\n').map(cleanDecklistLine).filter(Boolean)
     setEditPoolLoading(true)
     fetchDecklistCards(lines)
       .then(cards => {
         confirmSetup(playerIndex, lines)
         setPendingLibraryCards(cards)
-        setPendingLibraryTarget(p.zones.library.cardCount ?? 99)
+        setPendingLibraryTarget(player.zones.library.cardCount ?? 99)
         setShowLibraryOrder(true)
         setShowEditPool(false)
       })
@@ -294,9 +296,10 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
       },
       {
         label: 'Set library order', action: () => {
-          const realCards = p.zones.library.cards.filter(c => !c.faceDown)
+          if (!player) return
+          const realCards = player.zones.library.cards.filter(c => !c.faceDown)
           setPendingLibraryCards(realCards)
-          setPendingLibraryTarget(p.zones.library.cardCount ?? 99)
+          setPendingLibraryTarget(player.zones.library.cardCount ?? 99)
           setShowLibraryOrder(true)
         },
       },
@@ -406,14 +409,13 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
     )
   }
 
-  // Each zone section defined once — left and right layouts compose of these
   const libCount = zoneCount('library')
 
   const handSection = (
     <div className={styles.zoneSection} style={{ flex: 1, minWidth: 0 }}>
       {zoneHeader('Hand', handCount, 'hand', [
         { label: 'Move all to Library', action: () => moveAllFromZone('hand', 'library') },
-        { label: 'Move all to Bottom of Library', action: () => moveAllFromZone('hand', 'library') },
+        { label: 'Move all to Bottom of Library', action: () => moveAllFromZone('hand', 'library', 'bottom') },
         { label: 'Move all to Graveyard', action: () => moveAllFromZone('hand', 'graveyard') },
         { label: 'Move all to Exile', action: () => moveAllFromZone('hand', 'exile') },
         { label: 'Discard a Card Randomly', action: discardRandom, danger: true },
@@ -430,16 +432,22 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
         { label: 'Move all to Exile', action: () => moveAllFromZone('library', 'exile') },
         { label: 'Shuffle', action: () => shuffleLibrary(playerIndex) },
       ], libraryAddBtnRef, () => { const r = libraryAddBtnRef.current?.getBoundingClientRect(); if (r) handleAddCard('library', r) })}
-      <div
-        style={{ cursor: libCount > 0 ? 'pointer' : 'default' }}
-        onClick={() => { if (libCount > 0) drawCard(playerIndex) }}
-        title={libCount > 0 ? 'Click to draw' : ''}
-      >
-        {libCount > 0
-          ? <Image src={CARD_BACK} alt="Library" width={CARD_W} height={CARD_H} style={{ borderRadius: 4, display: 'block', width: CARD_W, height: CARD_H }} />
-          : <div className={styles.emptyPile} style={{ width: CARD_W, height: CARD_H }} />
-        }
-      </div>
+      {fetchingCards ? (
+        <div className={styles.emptyPile} style={{ width: CARD_W, height: CARD_H, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <span style={{ fontSize: '0.58rem', color: 'rgba(232,224,212,0.4)' }}>Loading...</span>
+        </div>
+      ) : (
+        <div
+          style={{ cursor: libCount > 0 ? 'pointer' : 'default' }}
+          onClick={() => { if (libCount > 0) drawCard(playerIndex) }}
+          title={libCount > 0 ? 'Click to draw' : ''}
+        >
+          {libCount > 0
+            ? <Image src={CARD_BACK} alt="Library" width={CARD_W} height={CARD_H} style={{ borderRadius: 4, display: 'block', width: CARD_W, height: CARD_H }} />
+            : <div className={styles.emptyPile} style={{ width: CARD_W, height: CARD_H }} />
+          }
+        </div>
+      )}
     </div>
   )
 
@@ -449,7 +457,7 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
         { label: 'View all', action: () => toggle('graveyard') },
         { label: 'Move all to Hand', action: () => moveAllFromZone('graveyard', 'hand') },
         { label: 'Move all to Library', action: () => moveAllFromZone('graveyard', 'library') },
-        { label: 'Move all to Bottom of Library', action: () => moveAllFromZone('graveyard', 'library') },
+        { label: 'Move all to Bottom of Library', action: () => moveAllFromZone('graveyard', 'library', 'bottom') },
         { label: 'Move all to Exile', action: () => moveAllFromZone('graveyard', 'exile') },
       ], graveyardAddBtnRef, () => { const r = graveyardAddBtnRef.current?.getBoundingClientRect(); if (r) handleAddCard('graveyard', r) })}
       {renderPile(p.zones.graveyard.cards, zoneCount('graveyard'), true, 'graveyard')}
@@ -464,7 +472,7 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
         { label: 'Move all to Hand', action: () => moveAllFromZone('exile', 'hand') },
         { label: 'Move all to Graveyard', action: () => moveAllFromZone('exile', 'graveyard') },
         { label: 'Move all to Library', action: () => moveAllFromZone('exile', 'library') },
-        { label: 'Move all to Bottom of Library', action: () => moveAllFromZone('exile', 'library') },
+        { label: 'Move all to Bottom of Library', action: () => moveAllFromZone('exile', 'library', 'bottom') },
       ], exileAddBtnRef, () => { const r = exileAddBtnRef.current?.getBoundingClientRect(); if (r) handleAddCard('exile', r) })}
       {renderPile(p.zones.exile.cards, zoneCount('exile'), true, 'exile')}
     </div>
@@ -697,7 +705,6 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
   const addBtnClass = isTop ? styles.addCardBtnBottom : styles.addCardBtnTop
   const outerSide = isRight ? styles.outerMenuRight : styles.outerMenuLeft
 
-  // Capture window dimensions here to avoid UMD global references in JSX
   const winH = typeof window !== 'undefined' ? window.innerHeight : 800
   const winW = typeof window !== 'undefined' ? window.innerWidth : 1200
 
@@ -812,6 +819,16 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
         </div>,
         document.body
       )}
+
+      {showLibraryOrder && createPortal(
+        <LibraryOrderModal
+          cards={pendingLibraryCards}
+          targetCount={pendingLibraryTarget}
+          onConfirm={handleLibraryOrderConfirm}
+          onClose={() => setShowLibraryOrder(false)}
+        />,
+        document.body
+      )}
     </div>
   )
 }
@@ -883,12 +900,9 @@ function LibraryOrderModal({ cards, targetCount, onConfirm, onClose }: {
     }
   }
 
-  // Builds final library array. drawCard pulls from the END of the array,
-  // so drawn-first cards go at the end. Placeholders fill the front.
   function buildFinalLibrary(ordered: Card[]): Card[] {
     const placeholderCount = Math.max(0, targetCount - ordered.length)
     const placeholders = Array.from({ length: placeholderCount }, (_, i) => makePlaceholder(i))
-    // UI index 0 = drawn first = last in array, so reverse
     return [...placeholders, ...[...ordered].reverse()]
   }
 

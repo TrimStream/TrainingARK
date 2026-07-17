@@ -16,10 +16,9 @@ model Scenario {
   id          String   @id @default(cuid())
   title       String
   description String
+  difficulty  String   @default("beginner")
   createdAt   DateTime @default(now())
-  turnNumber  Int
-  activePlayer String
-  phase       String
+  updatedAt   DateTime @updatedAt
   published   Boolean  @default(false)
   data        Json
   events      Event[]
