@@ -16,22 +16,66 @@ export function BuilderHeader() {
     scenarioTitle, setScenarioTitle,
     scenarioDescription, setScenarioDescription,
     difficulty, setDifficulty,
-    players,
+    players, steps, decklists,
+    firstPlayerIndex, currentTurnPlayerIndex, turnNumber, handSizes,
   } = useBuilderStore()
 
   const [editingTitle, setEditingTitle] = useState(false)
   const [titleInput, setTitleInput] = useState('')
   const [showDetails, setShowDetails] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [savedScenarioId, setSavedScenarioId] = useState<string | null>(null)
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'error'>('idle')
 
   function commitTitle() {
     if (titleInput.trim()) setScenarioTitle(titleInput.trim())
     setEditingTitle(false)
   }
 
-  // Featured commanders derived from command zones
   const commanders = players
     ? players.flatMap(p => p.zones.command.cards.map(c => c.name)).filter(Boolean)
     : []
+
+  async function handleSaveScenario() {
+    if (saving) return
+    setSaving(true)
+    setSaveStatus('idle')
+
+    const payload = {
+      title: scenarioTitle,
+      description: scenarioDescription,
+      difficulty,
+      data: {
+        steps,
+        decklists,
+        firstPlayerIndex,
+        currentTurnPlayerIndex,
+        turnNumber,
+        handSizes,
+        commanders,
+      },
+    }
+
+    try {
+      const url = savedScenarioId ? `/api/scenarios/${savedScenarioId}` : '/api/scenarios'
+      const method = savedScenarioId ? 'PUT' : 'POST'
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const result = await res.json()
+      if (result.id) setSavedScenarioId(result.id)
+      setSaveStatus('saved')
+      setTimeout(() => setSaveStatus('idle'), 2000)
+    } catch (err) {
+      console.error('Save failed:', err)
+      setSaveStatus('error')
+    } finally {
+      setSaving(false)
+    }
+  }
 
   return (
     <div className={styles.header}>
@@ -62,9 +106,21 @@ export function BuilderHeader() {
         </span>
       </div>
 
-      <button className={styles.detailsBtn} onClick={() => setShowDetails(true)}>
-        Details
-      </button>
+      <div className={styles.right}>
+        {saveStatus === 'saved' && <span className={styles.saveStatusOk}>Saved</span>}
+        {saveStatus === 'error' && <span className={styles.saveStatusError}>Save failed</span>}
+        <button
+          className={styles.saveScenarioBtn}
+          onClick={handleSaveScenario}
+          disabled={saving || steps.length === 0}
+          title={steps.length === 0 ? 'Save at least one step first' : 'Save scenario to database'}
+        >
+          {saving ? 'Saving...' : savedScenarioId ? 'Update scenario' : 'Save scenario'}
+        </button>
+        <button className={styles.detailsBtn} onClick={() => setShowDetails(true)}>
+          Details
+        </button>
+      </div>
 
       {showDetails && createPortal(
         <div className={styles.detailsBackdrop} onClick={() => setShowDetails(false)}>
