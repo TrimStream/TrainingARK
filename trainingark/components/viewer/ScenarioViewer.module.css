@@ -1,0 +1,341 @@
+.main {
+  width: 100vw;
+  height: 100vh;
+  background: #0a0a0e;
+  display: flex;
+  padding: 8px;
+  gap: 8px;
+  box-sizing: border-box;
+}
+
+.boardArea {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.viewerHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 2px 6px;
+  flex-shrink: 0;
+}
+
+.viewerTitle {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #e8e0d4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.viewerProgress {
+  font-size: 0.68rem;
+  color: #c9a84c;
+  flex-shrink: 0;
+}
+
+.boardWrap {
+  flex: 1;
+  min-height: 0;
+}
+
+.sidePanel {
+  width: 300px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  background: #13131a;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.logHeader {
+  padding: 10px 14px 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #e8e0d4;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+}
+
+.logFeed {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-height: 0;
+}
+
+.logFeed::-webkit-scrollbar { width: 3px; }
+.logFeed::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+
+.logLine {
+  font-size: 0.72rem;
+  color: rgba(232, 224, 212, 0.7);
+  line-height: 1.45;
+}
+
+.actionArea {
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  padding: 12px;
+  flex-shrink: 0;
+  max-height: 55%;
+  overflow-y: auto;
+}
+
+.primaryBtn {
+  width: 100%;
+  background: #8b6914;
+  border: none;
+  border-radius: 6px;
+  color: #f5edda;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 9px 14px;
+  transition: background 0.15s;
+}
+
+.primaryBtn:hover { background: #c9a84c; }
+
+.decisionBox {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.decisionPrompt {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #e8e0d4;
+  line-height: 1.5;
+}
+
+.choiceList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.choiceBtn {
+  background: #0f0f13;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  color: #e8e0d4;
+  cursor: pointer;
+  font-size: 0.74rem;
+  padding: 10px 12px;
+  text-align: left;
+  line-height: 1.4;
+  transition: border-color 0.1s, background 0.1s;
+}
+
+.choiceBtn:hover {
+  border-color: #c9a84c;
+  background: rgba(201, 168, 76, 0.06);
+}
+
+.revealHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.qualityBadge {
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  border-radius: 3px;
+}
+
+.quality_best { background: rgba(106, 176, 106, 0.15); color: #6ab06a; }
+.quality_ok { background: rgba(201, 168, 76, 0.15); color: #c9a84c; }
+.quality_blunder { background: rgba(224, 112, 112, 0.15); color: #e07070; }
+
+.revealPoints {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #e8e0d4;
+}
+
+.revealPicked {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: rgba(232, 224, 212, 0.9);
+}
+
+.revealExplanation {
+  font-size: 0.72rem;
+  color: rgba(232, 224, 212, 0.65);
+  line-height: 1.55;
+  margin: 0;
+}
+
+.bestBox {
+  background: rgba(106, 176, 106, 0.06);
+  border: 1px solid rgba(106, 176, 106, 0.25);
+  border-radius: 6px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.bestLabel {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #6ab06a;
+}
+
+.bestExplanation {
+  font-size: 0.68rem;
+  color: rgba(232, 224, 212, 0.6);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.centerScreen {
+  width: 100vw;
+  height: 100vh;
+  background: #0a0a0e;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+.loadingText {
+  font-size: 0.85rem;
+  color: rgba(232, 224, 212, 0.5);
+}
+
+.errorText {
+  font-size: 0.85rem;
+  color: #e07070;
+}
+
+.introCard {
+  background: #13131a;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+  padding: 32px;
+  width: min(520px, 92vw);
+  max-height: 88vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.introTitle {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #e8e0d4;
+  margin: 0;
+}
+
+.introDesc {
+  font-size: 0.8rem;
+  color: rgba(232, 224, 212, 0.65);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.introCommanders {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.commanderChip {
+  background: rgba(201, 168, 76, 0.1);
+  border: 1px solid rgba(201, 168, 76, 0.3);
+  border-radius: 12px;
+  color: #c9a84c;
+  font-size: 0.66rem;
+  padding: 3px 10px;
+}
+
+.introMeta {
+  font-size: 0.7rem;
+  color: rgba(232, 224, 212, 0.45);
+  margin: 0;
+}
+
+.introHint {
+  font-size: 0.68rem;
+  color: rgba(232, 224, 212, 0.4);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.difficultyBadge {
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  border-radius: 3px;
+}
+
+.badge_beginner { background: rgba(106, 176, 106, 0.15); color: #6ab06a; }
+.badge_intermediate { background: rgba(201, 168, 76, 0.15); color: #c9a84c; }
+.badge_advanced { background: rgba(224, 112, 112, 0.15); color: #e07070; }
+
+.scoreBig {
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: #c9a84c;
+}
+
+.debrief {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.debriefRow {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  background: #0f0f13;
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+
+.debriefBody {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.debriefPrompt {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: rgba(232, 224, 212, 0.85);
+  line-height: 1.4;
+}
+
+.debriefPick {
+  font-size: 0.64rem;
+  color: rgba(232, 224, 212, 0.5);
+  line-height: 1.4;
+}
