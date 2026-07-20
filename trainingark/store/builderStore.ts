@@ -87,6 +87,14 @@ interface BuilderState {
       currentTurnPlayerIndex: number
       turnNumber: number
       handSizes: [number, number, number, number]
+      workingState?: {
+        players: [Player, Player, Player, Player]
+        stack: StackItem[]
+        logLines: string[]
+        lastSavedLogIndex: number
+        setupComplete: boolean[]
+        scenarioStarted: boolean
+      }
     }
   }) => void
   scenarioTitle: string
@@ -273,9 +281,34 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
 
   loadScenario: (payload) => {
     const { data } = payload
+    history = []
+
+    // Prefer the live working state (draft support). Fall back to the last
+    // step's snapshot for scenarios saved before workingState existed.
+    if (data.workingState) {
+      const ws = data.workingState
+      set({
+        scenarioTitle: payload.title,
+        scenarioDescription: payload.description,
+        difficulty: payload.difficulty,
+        steps: data.steps,
+        decklists: data.decklists,
+        firstPlayerIndex: data.firstPlayerIndex,
+        currentTurnPlayerIndex: data.currentTurnPlayerIndex,
+        turnNumber: data.turnNumber,
+        handSizes: data.handSizes,
+        players: JSON.parse(JSON.stringify(ws.players)),
+        stack: JSON.parse(JSON.stringify(ws.stack)),
+        logLines: [...ws.logLines],
+        lastSavedLogIndex: ws.lastSavedLogIndex,
+        setupComplete: [...ws.setupComplete],
+        scenarioStarted: ws.scenarioStarted,
+      })
+      return
+    }
+
     const lastStep = data.steps[data.steps.length - 1]
     if (!lastStep) return
-    history = []
     set({
       scenarioTitle: payload.title,
       scenarioDescription: payload.description,

@@ -27,6 +27,7 @@ export function BuilderHeader() {
     players, steps, decklists,
     firstPlayerIndex, currentTurnPlayerIndex, turnNumber, handSizes,
     loadScenario,
+    stack, logLines, lastSavedLogIndex, setupComplete, scenarioStarted,
   } = useBuilderStore()
 
   const [editingTitle, setEditingTitle] = useState(false)
@@ -66,6 +67,14 @@ export function BuilderHeader() {
         turnNumber,
         handSizes,
         commanders,
+        workingState: {
+          players,
+          stack,
+          logLines,
+          lastSavedLogIndex,
+          setupComplete,
+          scenarioStarted,
+        },
       },
     }
 
@@ -166,8 +175,8 @@ export function BuilderHeader() {
         <button
           className={styles.saveScenarioBtn}
           onClick={handleSaveScenario}
-          disabled={saving || steps.length === 0}
-          title={steps.length === 0 ? 'Save at least one step first' : 'Save scenario to database'}
+          disabled={saving || !setupComplete.some(Boolean)}
+          title={!setupComplete.some(Boolean) ? 'Set up at least one player first' : 'Save scenario to database'}
         >
           {saving ? 'Saving...' : savedScenarioId ? 'Update scenario' : 'Save scenario'}
         </button>
