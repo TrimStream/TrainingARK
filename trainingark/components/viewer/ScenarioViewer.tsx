@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { ViewerBoard } from './ViewerBoard'
+import { Board } from '@/components/board/Board'
 import type { ViewerScenario, ViewerStep, ViewerDecisionChoice, DecisionResult } from './viewerTypes'
 import { QUALITY_POINTS } from './viewerTypes'
 import styles from './ScenarioViewer.module.css'
@@ -138,7 +138,7 @@ export function ScenarioViewer({ scenarioId }: { scenarioId: string }) {
             {steps.length} step{steps.length !== 1 ? 's' : ''} · {decisionCount} decision{decisionCount !== 1 ? 's' : ''} · {maxScore} points possible
           </p>
           <p className={styles.introHint}>
-            You are in the bottom-right seat. Opponents' hands are hidden. Click graveyard, exile, and hand labels to inspect zones. Hover any card to read it.
+            You are in the bottom-right seat. Opponents' hands are hidden. Click graveyard, exile, and your hand labels to inspect zones. Hover any card to read it.
           </p>
           <button className={styles.primaryBtn} onClick={handleStart}>Begin</button>
         </div>
@@ -183,7 +183,6 @@ export function ScenarioViewer({ scenarioId }: { scenarioId: string }) {
     )
   }
 
-  // playing / deciding / revealed — board plus side panel
   const dp = currentStep?.decisionPoint
 
   return (
@@ -198,9 +197,12 @@ export function ScenarioViewer({ scenarioId }: { scenarioId: string }) {
         </div>
         <div className={styles.boardWrap}>
           {currentStep && (
-            <ViewerBoard
-              players={currentStep.boardState.players}
-              stack={currentStep.boardState.stack}
+            <Board
+              viewMode
+              snapshot={{
+                players: currentStep.boardState.players,
+                stack: currentStep.boardState.stack,
+              }}
             />
           )}
         </div>

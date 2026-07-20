@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
+const MAX_PAYLOAD_BYTES = 8_000_000
+
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -24,7 +26,11 @@ export async function PUT(
 ) {
   try {
     const { id } = await params
-    const body = await req.json()
+    const raw = await req.text()
+    if (raw.length > MAX_PAYLOAD_BYTES) {
+      return NextResponse.json({ error: 'Payload too large' }, { status: 413 })
+    }
+    const body = JSON.parse(raw)
     const { title, description, difficulty, data } = body
 
     const scenario = await prisma.scenario.update({

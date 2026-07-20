@@ -10,8 +10,8 @@ import type { EditableZone } from '@/store/builderStore'
 
 interface BoardCardProps {
   card: Card
-  onMove: (target: ZoneTarget) => void
-  onCastToStack: (type: StackType) => void
+  onMove?: (target: ZoneTarget) => void
+  onCastToStack?: (type: StackType) => void
   onRemove?: () => void
   onCreateTokenCopy?: () => void
   onToggleTapped?: () => void
@@ -20,6 +20,9 @@ interface BoardCardProps {
   currentZone: EditableZone
   compact?: boolean
   showRemoveX?: boolean
+  // readOnly: render-only mode for the scenario viewer. Keeps hover preview,
+  // tapped rotation, and the token badge. Drops menus, shortcuts, and buttons.
+  readOnly?: boolean
 }
 
 const CARD_BACK = '/back_magic.png'
@@ -28,7 +31,7 @@ export function BoardCard({
   card, onMove, onCastToStack, onRemove, onCreateTokenCopy,
   onToggleTapped,
   onIncrement, onDecrement,
-  currentZone, compact, showRemoveX,
+  currentZone, compact, showRemoveX, readOnly,
 }: BoardCardProps) {
   const [hovered, setHovered] = useState(false)
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null)
@@ -39,10 +42,12 @@ export function BoardCard({
   const stackCount = card.stackCount ?? 1
 
   function openContextMenu(x: number, y: number) {
+    if (readOnly) return
     setContextMenu({ x, y })
   }
 
   function handleContextMenu(e: React.MouseEvent) {
+    if (readOnly) return
     e.preventDefault()
     e.stopPropagation()
     openContextMenu(e.clientX, e.clientY)
@@ -56,23 +61,23 @@ export function BoardCard({
   }
 
   useEffect(() => {
-    if (compact || !hovered) return
+    if (readOnly || compact || !hovered) return
     function handleKey(e: KeyboardEvent) {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
       switch (e.key.toLowerCase()) {
-        case 'b': if (currentZone !== 'battlefield') onMove('battlefield'); break
-        case 'h': if (currentZone !== 'hand') onMove('hand'); break
-        case 'g': if (currentZone !== 'graveyard') onMove('graveyard'); break
-        case 'e': if (currentZone !== 'exile') onMove('exile'); break
-        case 'l': if (currentZone !== 'library') onMove('library-top'); break
+        case 'b': if (currentZone !== 'battlefield') onMove?.('battlefield'); break
+        case 'h': if (currentZone !== 'hand') onMove?.('hand'); break
+        case 'g': if (currentZone !== 'graveyard') onMove?.('graveyard'); break
+        case 'e': if (currentZone !== 'exile') onMove?.('exile'); break
+        case 'l': if (currentZone !== 'library') onMove?.('library-top'); break
         case 't': if (currentZone === 'battlefield') onToggleTapped?.(); break
       }
     }
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
-  }, [hovered, onMove, compact])
+  }, [hovered, onMove, onToggleTapped, currentZone, compact, readOnly])
 
-  const contextMenuEl = contextMenu && (
+  const contextMenuEl = !readOnly && contextMenu && (
     <CardContextMenu
       x={contextMenu.x}
       y={contextMenu.y}
@@ -81,8 +86,8 @@ export function BoardCard({
       isToken={card.isToken}
       isCommander={card.isCommander}
       isTapped={card.tapped}
-      onMove={onMove}
-      onCastToStack={onCastToStack}
+      onMove={t => onMove?.(t)}
+      onCastToStack={t => onCastToStack?.(t)}
       onToggleTapped={onToggleTapped}
       onRemove={() => onRemove?.()}
       onCreateTokenCopy={onCreateTokenCopy}
@@ -92,6 +97,7 @@ export function BoardCard({
   )
 
   if (compact) {
+    if (readOnly) return null
     return (
       <>
         <div ref={cardRef} className={styles.compactWrap}>
@@ -121,13 +127,13 @@ export function BoardCard({
           style={{ borderRadius: 4, display: 'block', width: 80, height: 112 }}
         />
 
-        {hovered && (
+        {!readOnly && hovered && (
           <button className={styles.dotsBtn} onClick={handleDotsClick}>
             &#8942;
           </button>
         )}
 
-        {hovered && showRemoveX && onRemove && (
+        {!readOnly && hovered && showRemoveX && onRemove && (
           <button
             className={styles.removeBtn}
             onClick={e => { e.preventDefault(); e.stopPropagation(); onRemove() }}
@@ -141,7 +147,7 @@ export function BoardCard({
           <div className={styles.stackBadge}>×{stackCount}</div>
         )}
 
-        {hovered && isToken && (onIncrement || onDecrement) && (
+        {!readOnly && hovered && isToken && (onIncrement || onDecrement) && (
           <div className={styles.tokenControls}>
             <button
               className={styles.tokenBtn}

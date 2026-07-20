@@ -1,9 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
+// Hard cap on scenario payload size. A full 20-step scenario with snapshots
+// is well under 2MB; anything past 8MB is abuse or a bug, not a scenario.
+const MAX_PAYLOAD_BYTES = 8_000_000
+
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json()
+    const raw = await req.text()
+    if (raw.length > MAX_PAYLOAD_BYTES) {
+      return NextResponse.json({ error: 'Payload too large' }, { status: 413 })
+    }
+    const body = JSON.parse(raw)
     const { title, description, difficulty, data } = body
 
     if (!title || !data) {

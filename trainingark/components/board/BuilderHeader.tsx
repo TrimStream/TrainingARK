@@ -50,6 +50,8 @@ export function BuilderHeader() {
     ? players.flatMap(p => p.zones.command.cards.map(c => c.name)).filter(Boolean)
     : []
 
+  const canPreview = !!savedScenarioId && steps.length > 0
+
   async function handleSaveScenario() {
     if (saving) return
     setSaving(true)
@@ -97,6 +99,11 @@ export function BuilderHeader() {
     } finally {
       setSaving(false)
     }
+  }
+
+  function handlePreview() {
+    if (!canPreview || !savedScenarioId) return
+    window.open(`/scenario/${savedScenarioId}`, '_blank')
   }
 
   async function openLoadModal() {
@@ -171,6 +178,18 @@ export function BuilderHeader() {
         {saveStatus === 'error' && <span className={styles.saveStatusError}>Save failed</span>}
         <button className={styles.detailsBtn} onClick={openLoadModal}>
           Load
+        </button>
+        <button
+          className={styles.detailsBtn}
+          onClick={handlePreview}
+          disabled={!canPreview}
+          title={!savedScenarioId
+            ? 'Save the scenario first'
+            : steps.length === 0
+              ? 'Save at least one step first'
+              : 'Play this scenario as a player (opens in a new tab)'}
+        >
+          Preview
         </button>
         <button
           className={styles.saveScenarioBtn}

@@ -15,6 +15,11 @@ interface PlayerZoneProps {
   playerIndex: number
   position: PlayerPosition
   revealAll?: boolean
+  // viewMode: read-only rendering for the scenario viewer.
+  // playerOverride supplies the snapshot data instead of the builder store,
+  // so the viewer never reads or leaks live builder state.
+  viewMode?: boolean
+  playerOverride?: Player
 }
 
 const CARD_BACK = '/back_magic.png'
@@ -85,7 +90,7 @@ async function fetchDecklistCards(lines: string[]): Promise<Card[]> {
   return results
 }
 
-export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps) {
+export function PlayerZone({ playerIndex, position, revealAll, viewMode, playerOverride }: PlayerZoneProps) {
   const {
     players, updatePlayer, confirmSetup, setupComplete,
     moveCard, addCard, castToStack, setLife, setTax, setTaxPartner,
@@ -96,9 +101,10 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
     populateLibrary,
   } = useBuilderStore()
 
-  const player = players?.[playerIndex]
+  const player = viewMode ? playerOverride : players?.[playerIndex]
   const isSetupDone = setupComplete[playerIndex]
-  const decklist = decklists[playerIndex]
+  const decklist = decklists[playerIndex] ?? []
+  const isPlayerSeat = playerIndex === 0
 
   const [expanded, setExpanded] = useState<ExpandableZone | null>(null)
   const [filterText, setFilterText] = useState('')
@@ -150,19 +156,19 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
   }
 
   function handleMove(cardId: string, target: ZoneTarget) {
+    if (viewMode || !player) return
     const toZone = ZONE_TARGET_MAP[target]
-    const position = target === 'library-bottom' ? 'bottom' : 'top'
-    if (!player) return
+    const positionArg = target === 'library-bottom' ? 'bottom' : 'top'
     for (const [zoneName, zone] of Object.entries(player.zones)) {
       if (zone.cards.find((c: Card) => c.id === cardId)) {
-        moveCard(playerIndex, cardId, zoneName as EditableZone, toZone, position)
+        moveCard(playerIndex, cardId, zoneName as EditableZone, toZone, positionArg)
         return
       }
     }
   }
 
   function handleCastToStack(cardId: string, type: StackType) {
-    if (!player) return
+    if (viewMode || !player) return
     for (const [zoneName, zone] of Object.entries(player.zones)) {
       if (zone.cards.find((c: Card) => c.id === cardId)) {
         castToStack(playerIndex, cardId, zoneName as EditableZone, type)
@@ -171,16 +177,24 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
     }
   }
 
-  function handleRemove(cardId: string) { removeCard(playerIndex, cardId) }
-  function handleTokenCopy(cardId: string) { createTokenCopy(playerIndex, cardId) }
+  function handleRemove(cardId: string) {
+    if (viewMode) return
+    removeCard(playerIndex, cardId)
+  }
+
+  function handleTokenCopy(cardId: string) {
+    if (viewMode) return
+    createTokenCopy(playerIndex, cardId)
+  }
 
   function handleAddCard(zone: EditableZone, rect: DOMRect, tokensOnly?: boolean) {
+    if (viewMode) return
     setShowCardSearch({ zone, tokensOnly })
     setCardSearchRect(rect)
   }
 
   function handleCardSelected(card: Card) {
-    if (!showCardSearch) return
+    if (viewMode || !showCardSearch) return
     const { zone } = showCardSearch
     if (decklist.length > 0 && !decklist.includes(card.name) && !card.isToken) return
     addCard(playerIndex, zone, card)
@@ -189,7 +203,7 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
   }
 
   function handleSetupConfirm(partial: Partial<Player>, _commanderNames: string[], dl: string[]) {
-    if (!player) return
+    if (viewMode || !player) return
     const cleanedDl = dl.map(cleanDecklistLine).filter(Boolean)
     const updated: Player = {
       ...(player as Player),
@@ -237,14 +251,14 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
     setEditingHandSize(false)
   }
 
-  function moveAllFromZone(fromZone: EditableZone, toZone: EditableZone, position: 'top' | 'bottom' = 'top') {
-    if (!player) return
+  function moveAllFromZone(fromZone: EditableZone, toZone: EditableZone, positionArg: 'top' | 'bottom' = 'top') {
+    if (viewMode || !player) return
     const cards = [...player.zones[fromZone].cards]
-    cards.forEach(card => moveCard(playerIndex, card.id, fromZone, toZone, position))
+    cards.forEach(card => moveCard(playerIndex, card.id, fromZone, toZone, positionArg))
   }
 
   function discardRandom() {
-    if (!player) return
+    if (viewMode || !player) return
     const cards = player.zones.hand.cards
     if (cards.length === 0) return
     const card = cards[Math.floor(Math.random() * cards.length)]
@@ -252,7 +266,7 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
   }
 
   function handleEditPoolConfirm() {
-    if (!player) return
+    if (viewMode || !player) return
     const lines = editPoolText.split('\n').map(cleanDecklistLine).filter(Boolean)
     setEditPoolLoading(true)
     fetchDecklistCards(lines)
@@ -267,6 +281,7 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
   }
 
   function handleLibraryOrderConfirm(orderedCards: Card[]) {
+    if (viewMode) return
     populateLibrary(playerIndex, orderedCards)
     setShowLibraryOrder(false)
   }
@@ -277,6 +292,7 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
   }
 
   function openOuterMenu(e: React.MouseEvent) {
+    if (viewMode) return
     e.stopPropagation()
     const items: ZoneMenuItem[] = [
       { label: 'Search Library', action: () => toggle('library') },
@@ -311,7 +327,9 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
   const p: Player = player
 
   const handCount = zoneCount('hand')
-  const handRevealed = revealAll || p.zones.hand.revealed
+  const handRevealed = viewMode
+    ? (isPlayerSeat || p.zones.hand.revealed)
+    : (revealAll || p.zones.hand.revealed)
   const handCards = p.zones.hand.cards
 
   function renderHand() {
@@ -321,10 +339,14 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
       : Math.min(HAND_OVERLAP, (fanWidth - CARD_W) / (count - 1))
 
     return (
-      <div ref={handFanRef} className={styles.handFan} onClick={() => toggle('hand')}>
+      <div
+        ref={handFanRef}
+        className={styles.handFan}
+        onClick={() => { if (!viewMode || handRevealed) toggle('hand') }}
+      >
         {handRevealed && handCards.length > 0
           ? handCards.map((card: Card, i: number) => (
-              <div key={card.id} className={styles.fanCard} style={{ left: i * dynamicOverlap }} onClick={e => e.stopPropagation()}>
+              <div key={card.id} className={styles.fanCard} style={{ left: i * dynamicOverlap }} onClick={e => { if (!viewMode) e.stopPropagation() }}>
                 <BoardCard
                   card={card}
                   onMove={t => handleMove(card.id, t)}
@@ -332,6 +354,7 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
                   onRemove={() => handleRemove(card.id)}
                   showRemoveX
                   currentZone="hand"
+                  readOnly={viewMode}
                 />
               </div>
             ))
@@ -356,7 +379,7 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
       )
     }
     return (
-      <div onClick={e => e.stopPropagation()}>
+      <div onClick={e => { if (!viewMode) e.stopPropagation() }}>
         <BoardCard
           card={revealed ? topCard : { ...topCard, imageUrl: undefined }}
           onMove={t => handleMove(topCard.id, t)}
@@ -364,6 +387,7 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
           onRemove={() => handleRemove(topCard.id)}
           showRemoveX
           currentZone={zone}
+          readOnly={viewMode}
         />
       </div>
     )
@@ -381,6 +405,7 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
               onMove={t => handleMove(card.id, t)}
               onCastToStack={t => handleCastToStack(card.id, t)}
               currentZone="command"
+              readOnly={viewMode}
             />
           </div>
         ))}
@@ -390,21 +415,28 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
 
   function zoneHeader(
     label: string,
-    count: number,
+    count: number | null,
     expandKey: ExpandableZone | null,
     menuItems: ZoneMenuItem[],
     addRef?: React.RefObject<HTMLButtonElement | null>,
     onAdd?: () => void,
   ) {
+    const clickable = expandKey !== null && (!viewMode || expandKey !== 'library')
     return (
       <div className={styles.zoneLabelRow}>
-        <span className={styles.zoneLabelText} onClick={() => expandKey && toggle(expandKey)}>
-          {label} ({count})
+        <span
+          className={styles.zoneLabelText}
+          style={!clickable ? { cursor: 'default' } : undefined}
+          onClick={() => clickable && expandKey && toggle(expandKey)}
+        >
+          {label}{count !== null ? ` (${count})` : ''}
         </span>
-        {onAdd && (
+        {!viewMode && onAdd && (
           <button ref={addRef} className={styles.zoneAddBtn} onClick={e => { e.stopPropagation(); onAdd() }} title={`Add card to ${label}`}>+</button>
         )}
-        <button className={styles.zoneArrow} onClick={e => openZoneMenu(e, menuItems)}>▼</button>
+        {!viewMode && menuItems.length > 0 && (
+          <button className={styles.zoneArrow} onClick={e => openZoneMenu(e, menuItems)}>▼</button>
+        )}
       </div>
     )
   }
@@ -413,7 +445,7 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
 
   const handSection = (
     <div className={styles.zoneSection} style={{ flex: 1, minWidth: 0 }}>
-      {zoneHeader('Hand', handCount, 'hand', [
+      {zoneHeader('Hand', handCount, viewMode && !handRevealed ? null : 'hand', [
         { label: 'Move all to Library', action: () => moveAllFromZone('hand', 'library') },
         { label: 'Move all to Bottom of Library', action: () => moveAllFromZone('hand', 'library', 'bottom') },
         { label: 'Move all to Graveyard', action: () => moveAllFromZone('hand', 'graveyard') },
@@ -426,21 +458,21 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
 
   const librarySection = (
     <div className={styles.zoneSection}>
-      {zoneHeader('Library', libCount, 'library', [
+      {zoneHeader('Library', libCount, viewMode ? null : 'library', [
         { label: 'View Top Card', action: () => toggle('library') },
         { label: 'Move all to Graveyard', action: () => moveAllFromZone('library', 'graveyard') },
         { label: 'Move all to Exile', action: () => moveAllFromZone('library', 'exile') },
         { label: 'Shuffle', action: () => shuffleLibrary(playerIndex) },
       ], libraryAddBtnRef, () => { const r = libraryAddBtnRef.current?.getBoundingClientRect(); if (r) handleAddCard('library', r) })}
-      {fetchingCards ? (
+      {fetchingCards && !viewMode ? (
         <div className={styles.emptyPile} style={{ width: CARD_W, height: CARD_H, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <span style={{ fontSize: '0.58rem', color: 'rgba(232,224,212,0.4)' }}>Loading...</span>
         </div>
       ) : (
         <div
-          style={{ cursor: libCount > 0 ? 'pointer' : 'default' }}
-          onClick={() => { if (libCount > 0) drawCard(playerIndex) }}
-          title={libCount > 0 ? 'Click to draw' : ''}
+          style={{ cursor: !viewMode && libCount > 0 ? 'pointer' : 'default' }}
+          onClick={() => { if (!viewMode && libCount > 0) drawCard(playerIndex) }}
+          title={!viewMode && libCount > 0 ? 'Click to draw' : ''}
         >
           {libCount > 0
             ? <Image src={CARD_BACK} alt="Library" width={CARD_W} height={CARD_H} style={{ borderRadius: 4, display: 'block', width: CARD_W, height: CARD_H }} />
@@ -481,7 +513,7 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
   const commandSection = (
     <div className={styles.zoneSection}>
       <div className={styles.zoneLabelRow}>
-        <span className={styles.zoneLabelText}>Command</span>
+        <span className={styles.zoneLabelText} style={{ cursor: 'default' }}>Command</span>
       </div>
       {renderCommandZone()}
     </div>
@@ -533,6 +565,7 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
           <ExpandedRow
             key={card.id}
             card={card}
+            readOnly={viewMode}
             onMove={t => handleMove(card.id, t)}
             onCastToStack={t => handleCastToStack(card.id, t)}
             onRemove={() => handleRemove(card.id)}
@@ -553,7 +586,9 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
     </div>
   )
 
-  const lifeDisplay = editingLife ? (
+  const lifeDisplay = viewMode ? (
+    <span className={styles.playerLife}>{p.life}</span>
+  ) : editingLife ? (
     <input
       className={styles.inlineInput}
       type="number"
@@ -572,6 +607,9 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
   const isPartner = Array.isArray(p.commanderTax)
 
   function renderTax() {
+    if (viewMode) {
+      return <span className={styles.playerTax}>{formatTax(p.commanderTax)}</span>
+    }
     if (!isPartner) {
       if (editingTax === 0) {
         return (
@@ -633,7 +671,7 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
       <span className={styles.playerName}>{p.name}</span>
       {lifeDisplay}
       {renderTax()}
-      {editingHandSize ? (
+      {!viewMode && (editingHandSize ? (
         <input
           className={styles.inlineInput}
           type="number"
@@ -651,7 +689,7 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
         >
           Max: {handSizes[playerIndex]}
         </span>
-      )}
+      ))}
     </div>
   )
 
@@ -671,7 +709,7 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
   const lands = battlefield.filter((c: Card) => c.cardType === 'land')
 
   function renderBattlefieldCard(card: Card) {
-    const dup = !card.isToken && isDuplicate(playerIndex, card.name, card.id) && !dismissedDuplicateWarnings.has(card.id)
+    const dup = !viewMode && !card.isToken && isDuplicate(playerIndex, card.name, card.id) && !dismissedDuplicateWarnings.has(card.id)
     return (
       <div key={card.id} className={styles.battlefieldCardWrap}>
         {dup && (
@@ -686,11 +724,12 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
           onCastToStack={t => handleCastToStack(card.id, t)}
           onRemove={() => handleRemove(card.id)}
           onCreateTokenCopy={() => handleTokenCopy(card.id)}
-          onToggleTapped={() => toggleTapped(playerIndex, card.id)}
-          onIncrement={card.isToken ? () => incrementToken(playerIndex, card.id) : undefined}
-          onDecrement={card.isToken ? () => decrementToken(playerIndex, card.id) : undefined}
+          onToggleTapped={() => { if (!viewMode) toggleTapped(playerIndex, card.id) }}
+          onIncrement={!viewMode && card.isToken ? () => incrementToken(playerIndex, card.id) : undefined}
+          onDecrement={!viewMode && card.isToken ? () => decrementToken(playerIndex, card.id) : undefined}
           showRemoveX
           currentZone="battlefield"
+          readOnly={viewMode}
         />
       </div>
     )
@@ -710,7 +749,7 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
 
   return (
     <div className={styles.playmat}>
-      {!isSetupDone && (
+      {!viewMode && !isSetupDone && (
         <CommanderSetupModal
           playerIndex={playerIndex}
           playerName={PLAYER_NAMES[playerIndex]}
@@ -718,9 +757,11 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
         />
       )}
 
-      <button className={`${styles.outerMenuBtn} ${outerSide}`} onClick={openOuterMenu} title="Zone actions">
-        ⋮
-      </button>
+      {!viewMode && (
+        <button className={`${styles.outerMenuBtn} ${outerSide}`} onClick={openOuterMenu} title="Zone actions">
+          ⋮
+        </button>
+      )}
 
       {isTop && (
         <div className={styles.stripWrap}>
@@ -734,16 +775,18 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
           <Image src="/tark-dark.png" alt="" fill style={{ objectFit: 'contain' }} />
         </div>
         {isTop ? [...sections].reverse() : sections}
-        <button
-          ref={addBtnRef}
-          className={`${styles.addCardBtn} ${addBtnClass}`}
-          onClick={() => {
-            const rect = addBtnRef.current?.getBoundingClientRect()
-            if (rect) handleAddCard('battlefield', rect)
-          }}
-        >
-          + Add card
-        </button>
+        {!viewMode && (
+          <button
+            ref={addBtnRef}
+            className={`${styles.addCardBtn} ${addBtnClass}`}
+            onClick={() => {
+              const rect = addBtnRef.current?.getBoundingClientRect()
+              if (rect) handleAddCard('battlefield', rect)
+            }}
+          >
+            + Add card
+          </button>
+        )}
       </div>
 
       {!isTop && (
@@ -753,7 +796,7 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
         </div>
       )}
 
-      {showCardSearch && cardSearchRect && (
+      {!viewMode && showCardSearch && cardSearchRect && (
         <div
           className={styles.searchAnchor}
           style={{
@@ -772,7 +815,7 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
         </div>
       )}
 
-      {zoneMenu && (
+      {!viewMode && zoneMenu && (
         <ZoneMenu
           x={zoneMenu.x}
           y={zoneMenu.y}
@@ -781,7 +824,7 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
         />
       )}
 
-      {showEditPool && createPortal(
+      {!viewMode && showEditPool && createPortal(
         <div className={styles.editPoolBackdrop}>
           <div className={styles.editPoolModal}>
             <div className={styles.editPoolHeader}>
@@ -820,7 +863,7 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
         document.body
       )}
 
-      {showLibraryOrder && createPortal(
+      {!viewMode && showLibraryOrder && createPortal(
         <LibraryOrderModal
           cards={pendingLibraryCards}
           targetCount={pendingLibraryTarget}
@@ -833,8 +876,9 @@ export function PlayerZone({ playerIndex, position, revealAll }: PlayerZoneProps
   )
 }
 
-function ExpandedRow({ card, onMove, onCastToStack, onRemove, onCreateTokenCopy, onIncrement, onDecrement, currentZone }: {
+function ExpandedRow({ card, readOnly, onMove, onCastToStack, onRemove, onCreateTokenCopy, onIncrement, onDecrement, currentZone }: {
   card: Card
+  readOnly?: boolean
   onMove: (t: ZoneTarget) => void
   onCastToStack: (t: StackType) => void
   onRemove: () => void
@@ -853,17 +897,19 @@ function ExpandedRow({ card, onMove, onCastToStack, onRemove, onCreateTokenCopy,
       onMouseLeave={() => setHovered(false)}
     >
       <span className={styles.expandedRowName}>{card.name}</span>
-      <BoardCard
-        card={card}
-        onMove={onMove}
-        onCastToStack={onCastToStack}
-        onRemove={onRemove}
-        onCreateTokenCopy={onCreateTokenCopy}
-        onIncrement={onIncrement}
-        onDecrement={onDecrement}
-        currentZone={currentZone}
-        compact
-      />
+      {!readOnly && (
+        <BoardCard
+          card={card}
+          onMove={onMove}
+          onCastToStack={onCastToStack}
+          onRemove={onRemove}
+          onCreateTokenCopy={onCreateTokenCopy}
+          onIncrement={onIncrement}
+          onDecrement={onDecrement}
+          currentZone={currentZone}
+          compact
+        />
+      )}
       {hovered && card.imageUrl && createPortal(
         <div style={{
           position: 'fixed',
