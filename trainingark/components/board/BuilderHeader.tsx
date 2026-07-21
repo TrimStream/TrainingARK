@@ -47,7 +47,11 @@ export function BuilderHeader() {
   }
 
   const commanders = players
-    ? players.flatMap(p => p.zones.command.cards.map(c => c.name)).filter(Boolean)
+    ? players.flatMap(p =>
+        Object.values(p.zones).flatMap(z => z.cards)
+          .filter(c => c.isCommander)
+          .map(c => c.name)
+      ).filter(Boolean)
     : []
 
   const canPreview = !!savedScenarioId && steps.length > 0

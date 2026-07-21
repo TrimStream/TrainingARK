@@ -153,7 +153,10 @@ function isAbility(type: StackItem['type']): boolean {
   return type === 'triggered' || type === 'activated'
 }
 
+// Rebuilds the card for zone placement after stack resolution. Prefers the
+// full original card so flags like isCommander survive the round trip.
 function cardFromStackItem(item: StackItem): Card {
+  if (item.sourceCard) return { ...item.sourceCard }
   return {
     id: item.sourceCardId,
     name: item.sourceCardName,
@@ -664,14 +667,15 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
     }
 
     const stackItem: StackItem = {
-      id: `stack-${Date.now()}`,
-      sourceCardId: card.id,
-      sourceCardName: card.name,
-      controller: player.name,
-      label: card.name,
-      type,
-      imageUrl: card.imageUrl,
-      cardType: card.cardType,
+	  id: `stack-${Date.now()}`,
+	  sourceCardId: card.id,
+	  sourceCardName: card.name,
+	  controller: player.name,
+	  label: card.name,
+	  type,
+	  imageUrl: card.imageUrl,
+	  cardType: card.cardType,
+	  sourceCard: { ...card, tapped: false },
     }
 
     const typeLabel = type === 'cast' ? 'casts' : type === 'triggered' ? 'triggers' : 'activates'

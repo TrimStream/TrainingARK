@@ -51,6 +51,7 @@ export interface StackItem {
   type: 'cast' | 'triggered' | 'activated'
   imageUrl?: string
   cardType?: CardType
+  sourceCard?: Card
 }
 
 export type PlayerPosition = 'bottom-right' | 'bottom-left' | 'top-left' | 'top-right'
