@@ -6,7 +6,7 @@ import type { ViewerScenario, ViewerStep, ViewerDecisionChoice, DecisionResult }
 import { QUALITY_POINTS } from './viewerTypes'
 import styles from './ScenarioViewer.module.css'
 
-type Phase = 'loading' | 'error' | 'intro' | 'playing' | 'deciding' | 'revealed' | 'complete'
+type Phase = 'loading' | 'error' | 'playing' | 'deciding' | 'revealed' | 'complete'
 
 function shuffle<T>(arr: T[]): T[] {
   const out = [...arr]
@@ -16,6 +16,8 @@ function shuffle<T>(arr: T[]): T[] {
   }
   return out
 }
+
+const SEAT_HINT = 'You are in the bottom-right seat. Opponents\u2019 hands are hidden.'
 
 export function ScenarioViewer({ scenarioId }: { scenarioId: string }) {
   const [scenario, setScenario] = useState<ViewerScenario | null>(null)
@@ -36,7 +38,17 @@ export function ScenarioViewer({ scenarioId }: { scenarioId: string }) {
       .then((s: ViewerScenario) => {
         if (!s.data?.steps?.length) throw new Error('Scenario has no steps')
         setScenario(s)
-        setPhase('intro')
+        // Straight onto the board — no intro gate. Card info lives on the browse page.
+        const first = s.data.steps[0]
+        setStepIndex(0)
+        setVisibleLog([SEAT_HINT, ...first.logLines])
+        if (first.decisionPoint) {
+          setShuffledChoices(shuffle(first.decisionPoint.choices))
+          setPickedChoice(null)
+          setPhase('deciding')
+        } else {
+          setPhase('playing')
+        }
       })
       .catch(err => {
         console.error('Failed to load scenario:', err)
@@ -72,12 +84,6 @@ export function ScenarioViewer({ scenarioId }: { scenarioId: string }) {
     }
   }
 
-  function handleStart() {
-    setVisibleLog([])
-    setResults([])
-    enterStep(0)
-  }
-
   function handleNext() {
     if (stepIndex + 1 >= steps.length) {
       setPhase('complete')
@@ -103,11 +109,18 @@ export function ScenarioViewer({ scenarioId }: { scenarioId: string }) {
   }
 
   function handleRestart() {
-    setStepIndex(0)
-    setVisibleLog([])
     setResults([])
     setPickedChoice(null)
-    setPhase('intro')
+    const first = steps[0]
+    if (!first) return
+    setStepIndex(0)
+    setVisibleLog([SEAT_HINT, ...first.logLines])
+    if (first.decisionPoint) {
+      setShuffledChoices(shuffle(first.decisionPoint.choices))
+      setPhase('deciding')
+    } else {
+      setPhase('playing')
+    }
   }
 
   if (phase === 'loading') {
@@ -118,39 +131,11 @@ export function ScenarioViewer({ scenarioId }: { scenarioId: string }) {
     return <div className={styles.centerScreen}><span className={styles.errorText}>Could not load this scenario.</span></div>
   }
 
-  if (phase === 'intro') {
-    return (
-      <div className={styles.centerScreen}>
-        <div className={styles.introCard}>
-          <span className={`${styles.difficultyBadge} ${styles[`badge_${scenario.difficulty}`]}`}>
-            {scenario.difficulty}
-          </span>
-          <h1 className={styles.introTitle}>{scenario.title}</h1>
-          {scenario.description && <p className={styles.introDesc}>{scenario.description}</p>}
-          {scenario.data.commanders && scenario.data.commanders.length > 0 && (
-            <div className={styles.introCommanders}>
-              {scenario.data.commanders.map((name, i) => (
-                <span key={i} className={styles.commanderChip}>{name}</span>
-              ))}
-            </div>
-          )}
-          <p className={styles.introMeta}>
-            {steps.length} step{steps.length !== 1 ? 's' : ''} · {decisionCount} decision{decisionCount !== 1 ? 's' : ''} · {maxScore} points possible
-          </p>
-          <p className={styles.introHint}>
-            You are in the bottom-right seat. Opponents' hands are hidden. Click graveyard, exile, and your hand labels to inspect zones. Hover any card to read it.
-          </p>
-          <button className={styles.primaryBtn} onClick={handleStart}>Begin</button>
-        </div>
-      </div>
-    )
-  }
-
   if (phase === 'complete') {
     return (
       <div className={styles.centerScreen}>
         <div className={styles.introCard}>
-          <h1 className={styles.introTitle}>Scenario complete</h1>
+          <h1 className={styles.introTitle}>{scenario.title}</h1>
           <div className={styles.scoreBig}>
             {score} / {maxScore}
           </div>

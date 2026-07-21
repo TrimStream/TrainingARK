@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
-// Hard cap on scenario payload size. A full 20-step scenario with snapshots
-// is well under 2MB; anything past 8MB is abuse or a bug, not a scenario.
 const MAX_PAYLOAD_BYTES = 8_000_000
+const MAX_COMMANDERS = 8
+
+function sanitizeCommanders(input: unknown): string[] {
+  if (!Array.isArray(input)) return []
+  return input
+    .filter((c): c is string => typeof c === 'string' && c.trim().length > 0)
+    .slice(0, MAX_COMMANDERS)
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -12,7 +18,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Payload too large' }, { status: 413 })
     }
     const body = JSON.parse(raw)
-    const { title, description, difficulty, data } = body
+    const { title, description, difficulty, data, commanders } = body
 
     if (!title || !data) {
       return NextResponse.json({ error: 'Missing title or data' }, { status: 400 })
@@ -23,6 +29,7 @@ export async function POST(req: NextRequest) {
         title,
         description: description ?? '',
         difficulty: difficulty ?? 'beginner',
+        commanders: sanitizeCommanders(commanders),
         data,
       },
     })
@@ -42,6 +49,7 @@ export async function GET() {
         title: true,
         description: true,
         difficulty: true,
+        commanders: true,
         createdAt: true,
         updatedAt: true,
         published: true,

@@ -2,6 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
 const MAX_PAYLOAD_BYTES = 8_000_000
+const MAX_COMMANDERS = 8
+
+function sanitizeCommanders(input: unknown): string[] {
+  if (!Array.isArray(input)) return []
+  return input
+    .filter((c): c is string => typeof c === 'string' && c.trim().length > 0)
+    .slice(0, MAX_COMMANDERS)
+}
 
 export async function GET(
   _req: NextRequest,
@@ -31,7 +39,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Payload too large' }, { status: 413 })
     }
     const body = JSON.parse(raw)
-    const { title, description, difficulty, data } = body
+    const { title, description, difficulty, data, commanders } = body
 
     const scenario = await prisma.scenario.update({
       where: { id },
@@ -39,6 +47,7 @@ export async function PUT(
         ...(title !== undefined && { title }),
         ...(description !== undefined && { description }),
         ...(difficulty !== undefined && { difficulty }),
+        ...(commanders !== undefined && { commanders: sanitizeCommanders(commanders) }),
         ...(data !== undefined && { data }),
       },
     })

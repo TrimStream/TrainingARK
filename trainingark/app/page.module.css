@@ -1,0 +1,180 @@
+.page {
+  min-height: 100vh;
+  background: #0a0a0e;
+  padding: 0 24px 48px;
+  box-sizing: border-box;
+}
+
+.topBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 0 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  margin-bottom: 18px;
+}
+
+.brand {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #e8e0d4;
+  letter-spacing: 0.01em;
+}
+
+.brandAccent {
+  color: #c9a84c;
+}
+
+.createBtn {
+  background: #8b6914;
+  border-radius: 6px;
+  color: #f5edda;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 8px 16px;
+  text-decoration: none;
+  transition: background 0.15s;
+}
+
+.createBtn:hover { background: #c9a84c; }
+
+.filterRow {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.filterChip {
+  background: #13131a;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  color: rgba(232, 224, 212, 0.6);
+  cursor: pointer;
+  font-size: 0.72rem;
+  padding: 5px 14px;
+  transition: color 0.1s, border-color 0.1s, background 0.1s;
+}
+
+.filterChip:hover {
+  color: #e8e0d4;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.filterChipActive {
+  background: rgba(201, 168, 76, 0.12);
+  border-color: #c9a84c;
+  color: #c9a84c;
+}
+
+.stateText {
+  font-size: 0.8rem;
+  color: rgba(232, 224, 212, 0.4);
+  padding: 24px 0;
+}
+
+.stateTextError {
+  font-size: 0.8rem;
+  color: #e07070;
+  padding: 24px 0;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+}
+
+.card {
+  background: #13131a;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  text-decoration: none;
+  transition: border-color 0.12s, transform 0.12s;
+}
+
+.card:hover {
+  border-color: #c9a84c;
+  transform: translateY(-2px);
+}
+
+.cardTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.cardTitle {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: #e8e0d4;
+  line-height: 1.3;
+}
+
+.difficultyBadge {
+  font-size: 0.56rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.badge_beginner { background: rgba(106, 176, 106, 0.15); color: #6ab06a; }
+.badge_intermediate { background: rgba(201, 168, 76, 0.15); color: #c9a84c; }
+.badge_advanced { background: rgba(224, 112, 112, 0.15); color: #e07070; }
+
+.cardDesc {
+  font-size: 0.72rem;
+  color: rgba(232, 224, 212, 0.55);
+  line-height: 1.5;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.cardCommanders {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.commanderChip {
+  background: rgba(201, 168, 76, 0.1);
+  border: 1px solid rgba(201, 168, 76, 0.3);
+  border-radius: 12px;
+  color: #c9a84c;
+  font-size: 0.62rem;
+  padding: 2px 9px;
+}
+
+.cardFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: auto;
+}
+
+.draftBadge {
+  font-size: 0.56rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  border-radius: 3px;
+  background: rgba(232, 224, 212, 0.08);
+  color: rgba(232, 224, 212, 0.45);
+}
+
+.cardDate {
+  font-size: 0.62rem;
+  color: rgba(232, 224, 212, 0.3);
+  margin-left: auto;
+}

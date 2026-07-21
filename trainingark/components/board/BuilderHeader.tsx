@@ -46,6 +46,8 @@ export function BuilderHeader() {
     setEditingTitle(false)
   }
 
+  // Commanders found wherever they currently sit, via the isCommander flag —
+  // not just the command zone, so cast/moved commanders still count.
   const commanders = players
     ? players.flatMap(p =>
         Object.values(p.zones).flatMap(z => z.cards)
@@ -65,6 +67,7 @@ export function BuilderHeader() {
       title: scenarioTitle,
       description: scenarioDescription,
       difficulty,
+      commanders,
       data: {
         steps,
         decklists,
