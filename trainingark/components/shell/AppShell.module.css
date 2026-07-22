@@ -1,0 +1,26 @@
+.shell {
+  min-height: 100vh;
+  background: #0a0a0e;
+  display: flex;
+  flex-direction: column;
+}
+
+.body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.content {
+  flex: 1;
+  min-width: 0;
+  transition: margin-left 0.18s ease;
+}
+
+.contentSidebarOpen { margin-left: 220px; }
+.contentSidebarCollapsed { margin-left: 72px; }
+
+@media (max-width: 800px) {
+  .contentSidebarOpen,
+  .contentSidebarCollapsed { margin-left: 72px; }
+}

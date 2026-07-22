@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { AppShell } from '@/components/shell/AppShell'
 import styles from './page.module.css'
 
 interface ScenarioCard {
@@ -14,20 +15,72 @@ interface ScenarioCard {
   published: boolean
 }
 
-type DifficultyFilter = 'all' | 'beginner' | 'intermediate' | 'advanced'
+const DIFFICULTY_ORDER = ['beginner', 'intermediate', 'advanced'] as const
+const DIFFICULTY_LABELS: Record<string, string> = {
+  beginner: 'Beginner',
+  intermediate: 'Intermediate',
+  advanced: 'Advanced',
+}
 
-const FILTERS: { key: DifficultyFilter; label: string }[] = [
-  { key: 'all', label: 'All' },
-  { key: 'beginner', label: 'Beginner' },
-  { key: 'intermediate', label: 'Intermediate' },
-  { key: 'advanced', label: 'Advanced' },
-]
+function Card({ s }: { s: ScenarioCard }) {
+  return (
+    <Link href={`/scenario/${s.id}`} className={styles.card}>
+      <div className={styles.cardThumb}>
+        <span className={`${styles.difficultyBadge} ${styles[`badge_${s.difficulty}`]}`}>
+          {DIFFICULTY_LABELS[s.difficulty] ?? s.difficulty}
+        </span>
+        {!s.published && <span className={styles.draftBadge}>Draft</span>}
+      </div>
+      <div className={styles.cardBody}>
+        <span className={styles.cardTitle}>{s.title}</span>
+        {s.description && <p className={styles.cardDesc}>{s.description}</p>}
+        {s.commanders.length > 0 && (
+          <div className={styles.cardCommanders}>
+            {s.commanders.slice(0, 3).map((name, i) => (
+              <span key={i} className={styles.commanderChip}>{name}</span>
+            ))}
+            {s.commanders.length > 3 && (
+              <span className={styles.commanderMore}>+{s.commanders.length - 3}</span>
+            )}
+          </div>
+        )}
+      </div>
+    </Link>
+  )
+}
+
+function SkeletonCard() {
+  return (
+    <div className={styles.card}>
+      <div className={`${styles.cardThumb} ${styles.skeleton}`} />
+      <div className={styles.cardBody}>
+        <div className={`${styles.skeletonLine} ${styles.skeleton}`} style={{ width: '70%' }} />
+        <div className={`${styles.skeletonLine} ${styles.skeleton}`} style={{ width: '90%' }} />
+        <div className={`${styles.skeletonLine} ${styles.skeleton}`} style={{ width: '50%' }} />
+      </div>
+    </div>
+  )
+}
+
+function Row({ title, scenarios, loading }: { title: string; scenarios: ScenarioCard[]; loading: boolean }) {
+  if (!loading && scenarios.length === 0) return null
+  return (
+    <section className={styles.row}>
+      <h2 className={styles.rowTitle}>{title}</h2>
+      <div className={styles.rowGrid}>
+        {loading
+          ? Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)
+          : scenarios.map(s => <Card key={s.id} s={s} />)
+        }
+      </div>
+    </section>
+  )
+}
 
 export default function HomePage() {
   const [scenarios, setScenarios] = useState<ScenarioCard[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
-  const [filter, setFilter] = useState<DifficultyFilter>('all')
 
   useEffect(() => {
     fetch('/api/scenarios')
@@ -43,71 +96,36 @@ export default function HomePage() {
       .finally(() => setLoading(false))
   }, [])
 
-  const filtered = filter === 'all'
-    ? scenarios
-    : scenarios.filter(s => s.difficulty === filter)
+  const newest = [...scenarios].sort(
+    (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+  ).slice(0, 8)
 
   return (
-    <main className={styles.page}>
-      <header className={styles.topBar}>
-        <span className={styles.brand}>Training<span className={styles.brandAccent}>ARK</span></span>
-        <Link href="/builder" className={styles.createBtn}>
-          + Create scenario
-        </Link>
-      </header>
-
-      <div className={styles.filterRow}>
-        {FILTERS.map(f => (
-          <button
-            key={f.key}
-            className={`${styles.filterChip} ${filter === f.key ? styles.filterChipActive : ''}`}
-            onClick={() => setFilter(f.key)}
-          >
-            {f.label}
-          </button>
-        ))}
+    <AppShell>
+      <div className={styles.feed}>
+        {error ? (
+          <p className={styles.stateTextError}>Could not load scenarios. Try refreshing.</p>
+        ) : (
+          <>
+            <Row title="Newest scenarios" scenarios={newest} loading={loading} />
+            {DIFFICULTY_ORDER.map(diff => (
+              <Row
+                key={diff}
+                title={DIFFICULTY_LABELS[diff]}
+                scenarios={scenarios.filter(s => s.difficulty === diff)}
+                loading={loading}
+              />
+            ))}
+            {!loading && scenarios.length === 0 && (
+              <div className={styles.emptyState}>
+                <h2 className={styles.emptyTitle}>No scenarios yet</h2>
+                <p className={styles.emptyText}>Be the first Arkitekt — create one.</p>
+                <Link href="/builder" className={styles.emptyBtn}>Create scenario</Link>
+              </div>
+            )}
+          </>
+        )}
       </div>
-
-      {loading ? (
-        <p className={styles.stateText}>Loading scenarios...</p>
-      ) : error ? (
-        <p className={styles.stateTextError}>Could not load scenarios.</p>
-      ) : filtered.length === 0 ? (
-        <p className={styles.stateText}>
-          {scenarios.length === 0
-            ? 'No scenarios yet. Be the first Arkitekt — create one.'
-            : 'No scenarios at this difficulty yet.'}
-        </p>
-      ) : (
-        <div className={styles.grid}>
-          {filtered.map(s => (
-            <Link key={s.id} href={`/scenario/${s.id}`} className={styles.card}>
-              <div className={styles.cardTop}>
-                <span className={styles.cardTitle}>{s.title}</span>
-                <span className={`${styles.difficultyBadge} ${styles[`badge_${s.difficulty}`]}`}>
-                  {s.difficulty}
-                </span>
-              </div>
-              {s.description && (
-                <p className={styles.cardDesc}>{s.description}</p>
-              )}
-              {s.commanders.length > 0 && (
-                <div className={styles.cardCommanders}>
-                  {s.commanders.map((name, i) => (
-                    <span key={i} className={styles.commanderChip}>{name}</span>
-                  ))}
-                </div>
-              )}
-              <div className={styles.cardFooter}>
-                {!s.published && <span className={styles.draftBadge}>Draft</span>}
-                <span className={styles.cardDate}>
-                  {new Date(s.updatedAt).toLocaleDateString()}
-                </span>
-              </div>
-            </Link>
-          ))}
-        </div>
-      )}
-    </main>
+    </AppShell>
   )
 }

@@ -1,0 +1,138 @@
+.sidebar {
+  position: fixed;
+  top: 56px;
+  left: 0;
+  bottom: 0;
+  background: #0a0a0e;
+  overflow-y: auto;
+  overflow-x: hidden;
+  transition: width 0.18s ease;
+  z-index: 90;
+  padding: 8px 0;
+}
+
+.sidebar::-webkit-scrollbar { width: 4px; }
+.sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+
+.sidebarOpen { width: 220px; }
+.sidebarCollapsed { width: 72px; }
+
+@media (max-width: 800px) {
+  .sidebarOpen { width: 72px; }
+}
+
+.navSection {
+  display: flex;
+  flex-direction: column;
+  padding: 4px 8px;
+  gap: 2px;
+}
+
+.sectionTitle {
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: rgba(232, 224, 212, 0.4);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 8px 12px 4px;
+}
+
+.navItem {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  color: rgba(232, 224, 212, 0.85);
+  text-decoration: none;
+  font-size: 0.82rem;
+  transition: background 0.1s;
+  white-space: nowrap;
+}
+
+.navItem:hover { background: rgba(255, 255, 255, 0.08); }
+
+.navItemActive {
+  background: rgba(201, 168, 76, 0.12);
+  color: #c9a84c;
+  font-weight: 600;
+}
+
+.navItemCollapsed {
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 4px;
+  font-size: 0.58rem;
+}
+
+.navIcon {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+  width: 24px;
+  text-align: center;
+}
+
+.navLabel { flex: 1; }
+
+.divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.07);
+  margin: 8px 12px;
+}
+
+.signInPrompt {
+  padding: 8px 20px 12px;
+}
+
+.signInText {
+  font-size: 0.72rem;
+  color: rgba(232, 224, 212, 0.6);
+  line-height: 1.5;
+  margin: 0 0 12px;
+}
+
+.signInBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid rgba(201, 168, 76, 0.5);
+  border-radius: 18px;
+  color: #c9a84c;
+  font-size: 0.76rem;
+  font-weight: 600;
+  padding: 6px 16px;
+  text-decoration: none;
+  transition: background 0.1s;
+}
+
+.signInBtn:hover { background: rgba(201, 168, 76, 0.1); }
+
+.sidebarFooter {
+  padding: 12px 20px 20px;
+}
+
+.footerLinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.footerLinks a,
+.footerDisabled {
+  font-size: 0.66rem;
+  color: rgba(232, 224, 212, 0.4);
+  text-decoration: none;
+}
+
+.footerLinks a:hover { color: rgba(232, 224, 212, 0.7); }
+
+.footerDisabled {
+  color: rgba(232, 224, 212, 0.2);
+  cursor: default;
+}
+
+.footerCopyright {
+  font-size: 0.62rem;
+  color: rgba(232, 224, 212, 0.25);
+}
