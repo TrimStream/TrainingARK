@@ -1,4 +1,9 @@
 .playmat {
+  /* Single source of truth for card size. Everything below inherits these.
+     Tune the middle value to scale all cards at once. */
+  --card-w: clamp(46px, 4.1vw, 80px);
+  --card-h: calc(var(--card-w) * 1.4);
+
   position: relative;
   display: flex;
   flex-direction: column;
@@ -54,7 +59,12 @@
   flex-shrink: 0;
   padding: 6px 0;
   width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
 }
+
+.strip::-webkit-scrollbar { height: 3px; }
+.strip::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 2px; }
 
 .stripTop {
   border-top: none;
@@ -64,7 +74,7 @@
 
 .stripDivider {
   width: 1px;
-  height: 112px;
+  height: var(--card-h);
   background: rgba(255, 255, 255, 0.07);
   flex-shrink: 0;
 }
@@ -74,9 +84,9 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 0 12px;
+  padding: 0 8px;
   flex-shrink: 0;
-  min-width: 80px;
+  min-width: 62px;
 }
 
 .playerName {
@@ -87,7 +97,7 @@
 }
 
 .playerLife {
-  font-size: 1.3rem;
+  font-size: clamp(0.9rem, 1.1vw, 1.3rem);
   font-weight: 400;
   color: #e8e0d4;
   line-height: 1;
@@ -100,14 +110,26 @@
   margin-top: 2px;
 }
 
+.playerHandSize {
+  font-size: 0.56rem;
+  font-weight: 400;
+  color: rgba(232, 224, 212, 0.35);
+  margin-top: 2px;
+  cursor: pointer;
+}
+
+.playerHandSize:hover {
+  color: rgba(232, 224, 212, 0.6);
+}
+
 /* Zone sections */
 .zoneSection {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  padding: 0 10px;
+  padding: 0 6px;
   flex-shrink: 0;
-  min-width: 80px;
+  min-width: var(--card-w);
 }
 
 .zoneLabel {
@@ -158,17 +180,36 @@
   color: #c9a84c;
 }
 
+.zoneAddBtn {
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+  color: rgba(232, 224, 212, 0.4);
+  cursor: pointer;
+  font-size: 0.6rem;
+  line-height: 1;
+  padding: 0 4px;
+  flex-shrink: 0;
+  transition: color 0.1s, border-color 0.1s;
+}
+
+.zoneAddBtn:hover {
+  color: #c9a84c;
+  border-color: #c9a84c;
+}
+
 .emptyPile {
   border: 1px dashed rgba(255, 255, 255, 0.1);
   border-radius: 4px;
   background: rgba(255, 255, 255, 0.02);
 }
 
-/* Hand fan — height matches card height */
+/* Hand fan — height tracks card height, min-width stops label collapse */
 .handFan {
   position: relative;
-  height: 112px;
+  height: var(--card-h);
   width: 100%;
+  min-width: var(--card-w);
   cursor: pointer;
   overflow: hidden;
 }
@@ -182,6 +223,17 @@
 .fanCard:hover {
   transform: translateY(-6px);
   z-index: 10;
+}
+
+/* Command zone */
+.commandWrap {
+  position: relative;
+  height: var(--card-h);
+}
+
+.commandCardSlot {
+  position: absolute;
+  top: 0;
 }
 
 .inlineInput {
@@ -280,6 +332,10 @@
   color: #c9a84c;
 }
 
+.searchAnchor {
+  pointer-events: auto;
+}
+
 .stripWrap {
   position: relative;
 }
@@ -311,24 +367,6 @@
 
 .outerMenuRight {
   right: 4px;
-}
-
-.zoneAddBtn {
-  background: none;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 3px;
-  color: rgba(232, 224, 212, 0.4);
-  cursor: pointer;
-  font-size: 0.6rem;
-  line-height: 1;
-  padding: 0 4px;
-  flex-shrink: 0;
-  transition: color 0.1s, border-color 0.1s;
-}
-
-.zoneAddBtn:hover {
-  color: #c9a84c;
-  border-color: #c9a84c;
 }
 
 /* Expanded "View All" panel — overlaps the battlefield, vertical layout */
@@ -389,7 +427,6 @@
   color: rgba(232, 224, 212, 0.8);
 }
 
-/* Top card preview — capped so it doesn't crowd out the list */
 .expandedTopCard {
   flex-shrink: 0;
   max-height: 110px;
@@ -454,17 +491,6 @@
   border-color: #c9a84c;
 }
 
-/* Command zone */
-.commandWrap {
-  position: relative;
-  height: 112px;
-}
-
-.commandCardSlot {
-  position: absolute;
-  top: 0;
-}
-
 /* Battlefield card wrapper for duplicate warnings */
 .battlefieldCardWrap {
   position: relative;
@@ -505,22 +531,6 @@
 
 .duplicateWarning button:hover {
   background: rgba(224, 112, 112, 0.15);
-}
-
-.searchAnchor {
-  pointer-events: auto;
-}
-
-.playerHandSize {
-  font-size: 0.56rem;
-  font-weight: 400;
-  color: rgba(232, 224, 212, 0.35);
-  margin-top: 2px;
-  cursor: pointer;
-}
-
-.playerHandSize:hover {
-  color: rgba(232, 224, 212, 0.6);
 }
 
 /* Library order modal */

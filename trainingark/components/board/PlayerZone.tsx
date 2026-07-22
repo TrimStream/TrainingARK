@@ -131,13 +131,19 @@ export function PlayerZone({ playerIndex, position, revealAll, viewMode, playerO
   const libraryAddBtnRef = useRef<HTMLButtonElement>(null)
   const handFanRef = useRef<HTMLDivElement>(null)
   const [fanWidth, setFanWidth] = useState(200)
+  const [cardW, setCardW] = useState(80)
 
   useEffect(() => {
-    if (!handFanRef.current) return
+    const el = handFanRef.current
+    if (!el) return
     const observer = new ResizeObserver(entries => {
       setFanWidth(entries[0].contentRect.width)
+      // Read the live clamp() result so fan overlap scales with the cards
+      const v = getComputedStyle(el).getPropertyValue('--card-w')
+      const px = parseFloat(v)
+      if (!isNaN(px) && px > 0) setCardW(px)
     })
-    observer.observe(handFanRef.current)
+    observer.observe(el)
     return () => observer.disconnect()
   }, [])
 
@@ -334,9 +340,10 @@ export function PlayerZone({ playerIndex, position, revealAll, viewMode, playerO
 
   function renderHand() {
     const count = handRevealed && handCards.length > 0 ? handCards.length : handCount
+    const maxOverlap = cardW * 0.45
     const dynamicOverlap = count <= 1
       ? 0
-      : Math.min(HAND_OVERLAP, (fanWidth - CARD_W) / (count - 1))
+      : Math.min(maxOverlap, (fanWidth - cardW) / (count - 1))
 
     return (
       <div
@@ -360,7 +367,7 @@ export function PlayerZone({ playerIndex, position, revealAll, viewMode, playerO
             ))
           : Array.from({ length: count }).map((_, i: number) => (
               <div key={i} className={styles.fanCard} style={{ left: i * dynamicOverlap }}>
-                <Image src={CARD_BACK} alt="Card back" width={CARD_W} height={CARD_H} style={{ borderRadius: 4, display: 'block', width: CARD_W, height: CARD_H }} />
+                <Image src={CARD_BACK} alt="Card back" width={80} height={112} style={{ borderRadius: 4, display: 'block', width: 'var(--card-w)', height: 'var(--card-h)' }} />
               </div>
             ))
         }
@@ -369,11 +376,11 @@ export function PlayerZone({ playerIndex, position, revealAll, viewMode, playerO
   }
 
   function renderPile(cards: Card[], count: number, revealed: boolean, zone: EditableZone) {
-    if (count === 0) return <div className={styles.emptyPile} style={{ width: CARD_W, height: CARD_H }} />
+    if (count === 0) return <div className={styles.emptyPile} style={{ width: cards.length === 1 ? 'var(--card-w)' : 'calc(var(--card-w) + 16px)' }} />
     const topCard = cards[cards.length - 1]
     if (!topCard) {
       return (
-        <div style={{ width: CARD_W, height: CARD_H }}>
+        <div style={{ width: cards.length === 1 ? 'var(--card-w)' : 'calc(var(--card-w) + 16px)' }}>
           <Image src={CARD_BACK} alt="top card" width={CARD_W} height={CARD_H} style={{ borderRadius: 4, display: 'block', width: CARD_W, height: CARD_H }} />
         </div>
       )
@@ -395,7 +402,7 @@ export function PlayerZone({ playerIndex, position, revealAll, viewMode, playerO
 
   function renderCommandZone() {
     const cards = p.zones.command.cards
-    if (cards.length === 0) return <div className={styles.emptyPile} style={{ width: CARD_W, height: CARD_H }} />
+    if (cards.length === 0) return <div className={styles.emptyPile} style={{ width: cards.length === 1 ? 'var(--card-w)' : 'calc(var(--card-w) + 16px)' }} />
     return (
       <div className={styles.commandWrap} style={{ width: cards.length === 1 ? CARD_W : CARD_W + 16 }}>
         {cards.map((card: Card, i: number) => (
@@ -476,7 +483,7 @@ export function PlayerZone({ playerIndex, position, revealAll, viewMode, playerO
         >
           {libCount > 0
             ? <Image src={CARD_BACK} alt="Library" width={CARD_W} height={CARD_H} style={{ borderRadius: 4, display: 'block', width: CARD_W, height: CARD_H }} />
-            : <div className={styles.emptyPile} style={{ width: CARD_W, height: CARD_H }} />
+            : <div className={styles.emptyPile} style={{ width: cards.length === 1 ? 'var(--card-w)' : 'calc(var(--card-w) + 16px)' }} />
           }
         </div>
       )}

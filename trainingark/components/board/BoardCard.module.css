@@ -4,6 +4,8 @@
   flex-shrink: 0;
   cursor: pointer;
   transition: transform 0.15s;
+  width: var(--card-w, 80px);
+  height: var(--card-h, 112px);
 }
 
 .card:hover {
@@ -12,7 +14,7 @@
 
 .tapped {
   transform: rotate(90deg);
-  margin: 0 20px;
+  margin: 0 calc((var(--card-h, 112px) - var(--card-w, 80px)) / 2);
 }
 
 .dotsBtn {
