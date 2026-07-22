@@ -3,6 +3,13 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
+import { Rajdhani } from 'next/font/google'
+
+const rajdhani = Rajdhani({
+  subsets: ['latin'],
+  weight: ['500', '600', '700'],
+  variable: '--font-rajdhani',
+})
 
 const geistSans = Geist({
 	variable: "--font-geist-sans",

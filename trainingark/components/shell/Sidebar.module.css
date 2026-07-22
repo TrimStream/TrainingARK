@@ -94,45 +94,14 @@
 .signInBtn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
   border: 1px solid rgba(201, 168, 76, 0.5);
   border-radius: 18px;
   color: #c9a84c;
   font-size: 0.76rem;
   font-weight: 600;
-  padding: 6px 16px;
+  padding: 6px 18px;
   text-decoration: none;
   transition: background 0.1s;
 }
 
 .signInBtn:hover { background: rgba(201, 168, 76, 0.1); }
-
-.sidebarFooter {
-  padding: 12px 20px 20px;
-}
-
-.footerLinks {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 10px;
-}
-
-.footerLinks a,
-.footerDisabled {
-  font-size: 0.66rem;
-  color: rgba(232, 224, 212, 0.4);
-  text-decoration: none;
-}
-
-.footerLinks a:hover { color: rgba(232, 224, 212, 0.7); }
-
-.footerDisabled {
-  color: rgba(232, 224, 212, 0.2);
-  cursor: default;
-}
-
-.footerCopyright {
-  font-size: 0.62rem;
-  color: rgba(232, 224, 212, 0.25);
-}

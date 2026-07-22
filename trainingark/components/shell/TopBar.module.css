@@ -15,7 +15,7 @@
 .left {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 10px;
   flex-shrink: 0;
 }
 
@@ -34,14 +34,11 @@
 .hamburger:hover { background: rgba(255, 255, 255, 0.08); }
 
 .brand {
-  font-size: 1.2rem;
-  font-weight: 700;
-  color: #e8e0d4;
+  display: flex;
+  align-items: center;
   text-decoration: none;
-  letter-spacing: 0.01em;
+  line-height: 0;
 }
-
-.brandAccent { color: #c9a84c; }
 
 .searchWrap {
   flex: 1;
@@ -75,27 +72,22 @@
   padding: 8px 18px;
 }
 
-.right {
-  flex-shrink: 0;
-}
+.right { flex-shrink: 0; }
 
 .signInPill {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 6px;
   border: 1px solid rgba(201, 168, 76, 0.5);
   border-radius: 18px;
   color: #c9a84c;
   font-size: 0.78rem;
   font-weight: 600;
-  padding: 6px 14px;
+  padding: 6px 18px;
   text-decoration: none;
   transition: background 0.1s;
 }
 
 .signInPill:hover { background: rgba(201, 168, 76, 0.1); }
-
-.signInIcon { font-size: 0.9rem; }
 
 .avatar {
   width: 32px;

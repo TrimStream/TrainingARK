@@ -14,7 +14,14 @@
 .content {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - 56px);
   transition: margin-left 0.18s ease;
+}
+
+.pageContent {
+  flex: 1;
 }
 
 .contentSidebarOpen { margin-left: 220px; }

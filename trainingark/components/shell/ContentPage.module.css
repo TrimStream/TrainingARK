@@ -1,0 +1,46 @@
+.container {
+  max-width: 760px;
+  padding: 32px 24px 8px;
+}
+
+.title {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #e8e0d4;
+  margin: 0 0 24px;
+  line-height: 1.25;
+}
+
+.section {
+  margin-bottom: 28px;
+}
+
+.heading {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #c9a84c;
+  margin: 0 0 10px;
+}
+
+.body {
+  font-size: 0.86rem;
+  color: rgba(232, 224, 212, 0.7);
+  line-height: 1.75;
+  margin: 0 0 14px;
+}
+
+.body:last-child { margin-bottom: 0; }
+
+.list {
+  margin: 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.list li {
+  font-size: 0.86rem;
+  color: rgba(232, 224, 212, 0.7);
+  line-height: 1.6;
+}

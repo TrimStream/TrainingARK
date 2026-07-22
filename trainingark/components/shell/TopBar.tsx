@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useAuth } from '@/lib/useAuth'
+import { TarkLogo } from './TarkLogo'
 import styles from './TopBar.module.css'
 
 interface TopBarProps {
@@ -17,8 +18,8 @@ export function TopBar({ onToggleSidebar }: TopBarProps) {
         <button className={styles.hamburger} onClick={onToggleSidebar} title="Toggle menu" aria-label="Toggle menu">
           ☰
         </button>
-        <Link href="/" className={styles.brand}>
-          Training<span className={styles.brandAccent}>ARK</span>
+        <Link href="/" className={styles.brand} aria-label="TrainingARK home">
+          <TarkLogo size="small" />
         </Link>
       </div>
 
@@ -38,7 +39,6 @@ export function TopBar({ onToggleSidebar }: TopBarProps) {
           <div className={styles.avatar}>{user.avatarInitial}</div>
         ) : (
           <Link href="/login" className={styles.signInPill}>
-            <span className={styles.signInIcon}>☺</span>
             Sign in
           </Link>
         )}

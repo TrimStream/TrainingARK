@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Sidebar } from './Sidebar'
 import { TopBar } from './TopBar'
+import { Footer } from './Footer'
 import styles from './AppShell.module.css'
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -14,7 +15,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className={styles.body}>
         <Sidebar open={sidebarOpen} />
         <main className={`${styles.content} ${sidebarOpen ? styles.contentSidebarOpen : styles.contentSidebarCollapsed}`}>
-          {children}
+          <div className={styles.pageContent}>{children}</div>
+          <Footer />
         </main>
       </div>
     </div>

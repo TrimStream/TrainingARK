@@ -1,0 +1,65 @@
+.footer {
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  padding: 32px 24px 24px;
+  margin-top: 48px;
+}
+
+.columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 24px;
+  max-width: 900px;
+  margin-bottom: 28px;
+}
+
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.columnTitle {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: rgba(232, 224, 212, 0.75);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 3px;
+}
+
+.column a {
+  font-size: 0.74rem;
+  color: rgba(232, 224, 212, 0.45);
+  text-decoration: none;
+  transition: color 0.1s;
+  width: fit-content;
+}
+
+.column a:hover { color: #c9a84c; }
+
+.disabled {
+  font-size: 0.74rem;
+  color: rgba(232, 224, 212, 0.2);
+  cursor: default;
+  width: fit-content;
+}
+
+.credit {
+  font-size: 0.72rem;
+  color: rgba(232, 224, 212, 0.4);
+  padding-top: 18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.credit a {
+  color: rgba(232, 224, 212, 0.55);
+  text-decoration: none;
+}
+
+.credit a:hover { color: #c9a84c; }
+
+.legal {
+  font-size: 0.66rem;
+  color: rgba(232, 224, 212, 0.25);
+  margin-top: 8px;
+}

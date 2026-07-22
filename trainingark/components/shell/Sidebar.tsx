@@ -17,12 +17,11 @@ interface NavItem {
 
 const MAIN_NAV: NavItem[] = [
   { href: '/', label: 'Home', icon: '⌂' },
-  { href: '/scenarios', label: 'Scenarios', icon: '▦' },
   { href: '/builder', label: 'Create', icon: '✎' },
 ]
 
 const AUTH_NAV: NavItem[] = [
-  { href: '/you', label: 'You', icon: '☺' },
+  { href: '/dashboard', label: 'You', icon: '☺' },
   { href: '/history', label: 'History', icon: '↺' },
 ]
 
@@ -72,9 +71,7 @@ export function Sidebar({ open }: SidebarProps) {
           <>
             <div className={styles.signInPrompt}>
               <p className={styles.signInText}>Sign in to follow Arkitekts and track your progress.</p>
-              <Link href="/login" className={styles.signInBtn}>
-                <span>Sign in</span>
-              </Link>
+              <Link href="/login" className={styles.signInBtn}>Sign in</Link>
             </div>
             <div className={styles.divider} />
           </>
@@ -85,19 +82,6 @@ export function Sidebar({ open }: SidebarProps) {
         {open && <span className={styles.sectionTitle}>Explore</span>}
         {EXPLORE_NAV.map(renderItem)}
       </nav>
-
-      {open && (
-        <div className={styles.sidebarFooter}>
-          <div className={styles.footerLinks}>
-            <Link href="/about">About</Link>
-            <Link href="/rules">Rules</Link>
-            <Link href="/tutorial">Tutorial</Link>
-            <a href="https://github.com/TrimStream" target="_blank" rel="noopener noreferrer">GitHub</a>
-            <span className={styles.footerDisabled} title="Coming soon">Discord</span>
-          </div>
-          <span className={styles.footerCopyright}>© 2026 TrainingARK</span>
-        </div>
-      )}
     </aside>
   )
 }
