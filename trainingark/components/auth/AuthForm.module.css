@@ -1,0 +1,142 @@
+.page {
+  min-height: 100vh;
+  width: 100%;
+  background: #0a0a0e;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  box-sizing: border-box;
+}
+
+.card {
+  width: 100%;
+  max-width: 380px;
+  background: #13131a;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 10px;
+  padding: 28px 26px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.brand {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 4px;
+}
+
+.heading {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #e8e0d4;
+  text-align: center;
+  margin: 0;
+}
+
+.sub {
+  font-size: 0.76rem;
+  color: rgba(232, 224, 212, 0.5);
+  text-align: center;
+  margin: -8px 0 4px;
+  line-height: 1.5;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.fieldLabel {
+  font-size: 0.66rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(232, 224, 212, 0.45);
+  margin-bottom: 5px;
+  display: block;
+}
+
+.input {
+  width: 100%;
+  background: #0a0a0e;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 5px;
+  color: #e8e0d4;
+  font-size: 0.85rem;
+  padding: 9px 11px;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.12s;
+}
+
+.input:focus {
+  border-color: #c9a84c;
+}
+
+.input::placeholder {
+  color: rgba(232, 224, 212, 0.28);
+}
+
+.submitBtn {
+  background: #8b6914;
+  border: none;
+  border-radius: 5px;
+  color: #f5edda;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 10px 14px;
+  margin-top: 4px;
+  transition: background 0.15s;
+}
+
+.submitBtn:hover:not(:disabled) {
+  background: #c9a84c;
+}
+
+.submitBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.error {
+  font-size: 0.74rem;
+  color: #e07070;
+  background: rgba(224, 112, 112, 0.08);
+  border-radius: 5px;
+  padding: 8px 10px;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.footerText {
+  font-size: 0.75rem;
+  color: rgba(232, 224, 212, 0.45);
+  text-align: center;
+  margin: 6px 0 0;
+}
+
+.footerLink {
+  color: #c9a84c;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.footerLink:hover {
+  text-decoration: underline;
+}
+
+.homeLink {
+  font-size: 0.72rem;
+  color: rgba(232, 224, 212, 0.35);
+  text-align: center;
+  text-decoration: none;
+  margin-top: 2px;
+}
+
+.homeLink:hover {
+  color: #c9a84c;
+}
