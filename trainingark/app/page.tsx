@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { AppShell } from '@/components/shell/AppShell'
 import styles from './page.module.css'
 
+
 interface ScenarioCard {
   id: string
   title: string

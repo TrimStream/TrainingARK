@@ -3,7 +3,9 @@ import { auth } from '@/lib/auth'
 import { ContentPage } from '@/components/shell/ContentPage'
 import { SettingsClient } from '@/components/settings/SettingsClient'
 
-export const metadata = { title: 'Settings · TrainingARK' }
+import type { Metadata } from 'next'
+
+export const metadata: Metadata = { title: 'Settings' }
 
 export default async function SettingsPage() {
   // Server-side gate, same as the builder and dashboard.

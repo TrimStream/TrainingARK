@@ -4,7 +4,9 @@ import { auth } from '@/lib/auth'
 import { safeCallbackUrl } from '@/lib/safeCallbackUrl'
 import { AuthForm } from '@/components/auth/AuthForm'
 
-export const metadata = { title: 'Sign in · TrainingARK' }
+import type { Metadata } from 'next'
+
+export const metadata: Metadata = { title: 'Sign in' }
 
 export default async function LoginPage(props: {
   searchParams: Promise<{ callbackUrl?: string }>

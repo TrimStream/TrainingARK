@@ -3,6 +3,9 @@ import { auth } from '@/lib/auth'
 import { Board } from '@/components/board/Board'
 import { ActionLog } from '@/components/board/ActionLog'
 import { BuilderHeader } from '@/components/board/BuilderHeader'
+import type { Metadata } from 'next'
+
+export const metadata: Metadata = { title: 'Builder' }
 
 export default async function BuilderPage(props: {
   searchParams: Promise<{ id?: string | string[] }>

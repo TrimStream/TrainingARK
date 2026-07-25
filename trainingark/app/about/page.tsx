@@ -1,7 +1,9 @@
 import { ContentPage } from '@/components/shell/ContentPage'
 import styles from '@/components/shell/ContentPage.module.css'
 
-export const metadata = { title: 'TrainingARK - About' }
+import type { Metadata } from 'next'
+
+export const metadata: Metadata = { title: 'About' }
 
 export default function AboutPage() {
   return (

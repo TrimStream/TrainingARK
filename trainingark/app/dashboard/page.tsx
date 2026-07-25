@@ -2,7 +2,9 @@ import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { DashboardClient } from '@/components/dashboard/DashboardClient'
 
-export const metadata = { title: 'Your scenarios · TrainingARK' }
+import type { Metadata } from 'next'
+
+export const metadata: Metadata = { title: 'Your scenarios' }
 
 export default async function DashboardPage() {
   // Server-side gate, same as the builder: a logged-out visitor never receives

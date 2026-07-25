@@ -4,7 +4,9 @@ import { auth } from '@/lib/auth'
 import { safeCallbackUrl } from '@/lib/safeCallbackUrl'
 import { AuthForm } from '@/components/auth/AuthForm'
 
-export const metadata = { title: 'Create account · TrainingARK' }
+import type { Metadata } from 'next'
+
+export const metadata: Metadata = { title: 'Create account' }
 
 export default async function RegisterPage(props: {
   searchParams: Promise<{ callbackUrl?: string }>
