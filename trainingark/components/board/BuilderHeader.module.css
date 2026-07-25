@@ -344,3 +344,18 @@
   font-size: 0.68rem;
   color: rgba(232, 224, 212, 0.5);
 }
+
+.homeLink {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+  line-height: 0;
+  flex-shrink: 0;
+  margin-right: 4px;
+  height: 26px;
+}
+
+.homeLink svg {
+  height: 100%;
+  width: auto;
+}

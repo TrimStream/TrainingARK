@@ -346,6 +346,13 @@
   text-decoration: none;
   line-height: 0;
   flex-shrink: 0;
+  margin-right: 4px;
+  height: 26px;
+}
+
+.homeLink svg {
+  height: 100%;
+  width: auto;
 }
 
 .centerScreen {

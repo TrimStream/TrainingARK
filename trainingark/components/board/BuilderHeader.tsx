@@ -3,7 +3,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { useBuilderStore } from '@/store/builderStore'
+import { TarkLogo } from '@/components/shell/TarkLogo'
 import { useAuth } from '@/lib/useAuth'
 import styles from './BuilderHeader.module.css'
 
@@ -321,6 +323,9 @@ export function BuilderHeader() {
   return (
     <div className={styles.header}>
       <div className={styles.left}>
+        <Link href="/" className={styles.homeLink} title="Back to home" aria-label="Back to TrainingARK home">
+          <TarkLogo size="small" />
+        </Link>
         {editingTitle ? (
           <input
             className={styles.titleInput}
