@@ -27,8 +27,16 @@
     z-index: 20;
     min-width: 180px;
     max-width: 260px;
+    /* Centred on the seam between the four playmats, so it grows equally into
+       all of them. Capping it at 40vh keeps it 20vh either side of the seam,
+       which stays clear of every playmat's zone strip at the outer edges. */
+    max-height: 40vh;
+    overflow-y: auto;
     pointer-events: auto;
 }
+
+.stackZone::-webkit-scrollbar { width: 3px; }
+.stackZone::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.12); border-radius: 2px; }
 
 .stackLabel {
     font-size: 0.62rem;

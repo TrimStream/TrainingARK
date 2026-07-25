@@ -44,6 +44,7 @@ interface BuilderState {
   updatePlayer: (index: number, player: Player) => void
   confirmSetup: (index: number, decklist: string[]) => void
   moveCard: (playerIndex: number, cardId: string, fromZone: EditableZone, toZone: EditableZone, position?: 'top' | 'bottom') => void
+  moveAllCards: (playerIndex: number, fromZone: EditableZone, toZone: EditableZone, position?: 'top' | 'bottom') => void
   addCard: (playerIndex: number, zone: EditableZone, card: Card) => void
   silentAddCard: (playerIndex: number, zone: EditableZone, card: Card) => void
   removeCard: (playerIndex: number, cardId: string) => void
@@ -148,6 +149,21 @@ function pushHistory(state: { players: [Player, Player, Player, Player] | null, 
     stack: JSON.parse(JSON.stringify(state.stack)),
     logLines: [...state.logLines],
   }]
+}
+
+// A zone can carry a cardCount without materialized Card objects (a library is
+// "99 cards" long before a decklist is imported). Anything that has to move
+// those cards for real fills the gap with these. Shared with LibraryOrderModal
+// so there is one placeholder shape in the app.
+let placeholderSeq = 0
+
+export function makeUnknownCard(): Card {
+  return {
+    id: `placeholder-${Date.now()}-${placeholderSeq++}`,
+    name: 'Unknown card',
+    cardType: 'instant',
+    faceDown: true,
+  }
 }
 
 function isAbility(type: StackItem['type']): boolean {
@@ -492,6 +508,53 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
     set({ players: updated, logLines: state.scenarioStarted ? [...state.logLines, logLine] : state.logLines })
   },
 
+  moveAllCards: (playerIndex, fromZone, toZone, position = 'top') => {
+    const state = get()
+    if (!state.players) return
+
+    const player = state.players[playerIndex]
+    const fromZoneData = player.zones[fromZone]
+    // cardCount is the truth, not cards.length — an unpopulated library reads
+    // 99 with an empty cards array. Materialize the difference so a bulk move
+    // actually moves what the zone claims to hold.
+    const trueCount = fromZoneData.cardCount ?? fromZoneData.cards.length
+    if (trueCount === 0) return
+
+    pushHistory(state)
+
+    const unknownCount = Math.max(0, trueCount - fromZoneData.cards.length)
+    // Placeholders represent the un-imported bottom of the pile: in a library
+    // the array's end is the top, so they go in front of the known cards.
+    const movingCards = [
+      ...Array.from({ length: unknownCount }, () => makeUnknownCard()),
+      ...fromZoneData.cards,
+    ]
+
+    const toCount = player.zones[toZone].cardCount ?? player.zones[toZone].cards.length
+    const cleanCards = movingCards.map((card: Card) => ({ ...card, tapped: false }))
+
+    // Library array: end = top (drawn first), start = bottom.
+    // 'bottom' prepends, 'top' (and every non-library zone) appends.
+    const toCards = (toZone === 'library' && position === 'bottom')
+      ? [...cleanCards, ...player.zones[toZone].cards]
+      : [...player.zones[toZone].cards, ...cleanCards]
+
+    const updated = [...state.players] as [Player, Player, Player, Player]
+    updated[playerIndex] = {
+      ...player,
+      zones: {
+        ...player.zones,
+        // Every card the zone claimed to hold moved, so it ends fully empty.
+        [fromZone]: { ...player.zones[fromZone], cards: [], cardCount: 0 },
+        [toZone]: { ...player.zones[toZone], cards: toCards, cardCount: toCount + cleanCards.length },
+      },
+    }
+
+    const positionLabel = toZone === 'library' ? (position === 'bottom' ? 'bottom of library' : 'top of library') : ZONE_NAMES[toZone]
+    const logLine = `All cards from ${player.name}'s ${ZONE_NAMES[fromZone]} move to ${positionLabel}.`
+    set({ players: updated, logLines: state.scenarioStarted ? [...state.logLines, logLine] : state.logLines })
+  },
+
   addCard: (playerIndex, zone, card) => {
     const state = get()
     if (!state.players) return
@@ -518,11 +581,13 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
       ...player,
       zones: {
         ...player.zones,
-        [zone]: { ...zoneData, cards: [...zoneData.cards, card], cardCount: count + 1 },
         // Tokens are created from nothing — only real cards drawn from the library decrement it.
+        // Must stay ABOVE [zone]: adding to the library needs the computed key to
+        // win, or the card is silently dropped by this passthrough.
         library: (zone !== 'library' && !card.isToken)
           ? { ...player.zones.library, cardCount: Math.max(0, libCount - 1) }
           : player.zones.library,
+        [zone]: { ...zoneData, cards: [...zoneData.cards, card], cardCount: count + 1 },
       },
     }
 
@@ -542,10 +607,11 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
       ...player,
       zones: {
         ...player.zones,
-        [zone]: { ...zoneData, cards: [...zoneData.cards, card], cardCount: count + 1 },
+        // Ordering matters — see addCard.
         library: (zone !== 'library' && !card.isToken)
           ? { ...player.zones.library, cardCount: Math.max(0, libCount - 1) }
           : player.zones.library,
+        [zone]: { ...zoneData, cards: [...zoneData.cards, card], cardCount: count + 1 },
       },
     }
     set({ players: updated })

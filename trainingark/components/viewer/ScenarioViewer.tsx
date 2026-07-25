@@ -1,7 +1,9 @@
 'use client'
 
 import { useState, useEffect, useMemo, useRef } from 'react'
+import Link from 'next/link'
 import { Board } from '@/components/board/Board'
+import { TarkLogo } from '@/components/shell/TarkLogo'
 import type { ViewerScenario, ViewerStep, ViewerDecisionChoice, DecisionResult } from './viewerTypes'
 import { QUALITY_POINTS } from './viewerTypes'
 import styles from './ScenarioViewer.module.css'
@@ -18,6 +20,14 @@ function shuffle<T>(arr: T[]): T[] {
 }
 
 const SEAT_HINT = 'You are in the bottom-right seat. Opponents\u2019 hands are hidden.'
+
+function HomeLink() {
+  return (
+    <Link href="/" className={styles.homeLink} aria-label="Back to TrainingARK home" title="Back to home">
+      <TarkLogo size="small" />
+    </Link>
+  )
+}
 
 export function ScenarioViewer({ scenarioId }: { scenarioId: string }) {
   const [scenario, setScenario] = useState<ViewerScenario | null>(null)
@@ -38,7 +48,6 @@ export function ScenarioViewer({ scenarioId }: { scenarioId: string }) {
       .then((s: ViewerScenario) => {
         if (!s.data?.steps?.length) throw new Error('Scenario has no steps')
         setScenario(s)
-        // Straight onto the board — no intro gate. Card info lives on the browse page.
         const first = s.data.steps[0]
         setStepIndex(0)
         setVisibleLog([SEAT_HINT, ...first.logLines])
@@ -124,16 +133,27 @@ export function ScenarioViewer({ scenarioId }: { scenarioId: string }) {
   }
 
   if (phase === 'loading') {
-    return <div className={styles.centerScreen}><span className={styles.loadingText}>Loading scenario...</span></div>
+    return (
+      <div className={styles.centerScreen}>
+        <HomeLink />
+        <span className={styles.loadingText}>Loading scenario...</span>
+      </div>
+    )
   }
 
   if (phase === 'error' || !scenario) {
-    return <div className={styles.centerScreen}><span className={styles.errorText}>Could not load this scenario.</span></div>
+    return (
+      <div className={styles.centerScreen}>
+        <HomeLink />
+        <span className={styles.errorText}>Could not load this scenario.</span>
+      </div>
+    )
   }
 
   if (phase === 'complete') {
     return (
       <div className={styles.centerScreen}>
+        <HomeLink />
         <div className={styles.introCard}>
           <h1 className={styles.introTitle}>{scenario.title}</h1>
           <div className={styles.scoreBig}>
@@ -162,7 +182,10 @@ export function ScenarioViewer({ scenarioId }: { scenarioId: string }) {
             </div>
           )}
 
-          <button className={styles.primaryBtn} onClick={handleRestart}>Play again</button>
+          <div className={styles.completeActions}>
+            <button className={styles.primaryBtn} onClick={handleRestart}>Play again</button>
+            <Link href="/" className={styles.secondaryBtn}>Back to home</Link>
+          </div>
         </div>
       </div>
     )
@@ -174,7 +197,10 @@ export function ScenarioViewer({ scenarioId }: { scenarioId: string }) {
     <main className={styles.main}>
       <div className={styles.boardArea}>
         <div className={styles.viewerHeader}>
-          <span className={styles.viewerTitle}>{scenario.title}</span>
+          <div className={styles.viewerHeaderLeft}>
+            <HomeLink />
+            <span className={styles.viewerTitle}>{scenario.title}</span>
+          </div>
           <span className={styles.viewerProgress}>
             Step {stepIndex + 1} / {steps.length}
             {decisionCount > 0 && <> · Score {score}/{maxScore}</>}

@@ -9,7 +9,7 @@ import { BoardCard } from './BoardCard'
 import type { ZoneTarget, StackType } from './CardContextMenu'
 import { ZoneMenu, type ZoneMenuItem } from './ZoneMenu'
 import { CommanderSetupModal } from './CommanderSetupModal'
-import { useBuilderStore, type EditableZone } from '@/store/builderStore'
+import { useBuilderStore, makeUnknownCard, type EditableZone } from '@/store/builderStore'
 
 interface PlayerZoneProps {
   playerIndex: number
@@ -23,10 +23,6 @@ const CARD_BACK = '/back_magic.png'
 const CARD_W = 80
 const CARD_H = 112
 const HAND_OVERLAP = 36
-
-// Every non-hand zone is locked to exactly one card's width via this style.
-// Command widens itself separately when a player has two commanders.
-const fixedZoneStyle: React.CSSProperties = { width: 'var(--card-w)', minWidth: 'var(--card-w)' }
 
 type ExpandableZone = 'hand' | 'graveyard' | 'exile' | 'library'
 
@@ -94,7 +90,7 @@ async function fetchDecklistCards(lines: string[]): Promise<Card[]> {
 export function PlayerZone({ playerIndex, position, revealAll, viewMode, playerOverride }: PlayerZoneProps) {
   const {
     players, updatePlayer, confirmSetup, setupComplete,
-    moveCard, addCard, castToStack, setLife, setTax, setTaxPartner,
+    moveCard, moveAllCards, addCard, castToStack, setLife, setTax, setTaxPartner,
     decklists, drawCard, shuffleLibrary, removeCard, createTokenCopy,
     incrementToken, decrementToken, toggleTapped,
     handSizes, setHandSize,
@@ -259,8 +255,7 @@ export function PlayerZone({ playerIndex, position, revealAll, viewMode, playerO
 
   function moveAllFromZone(fromZone: EditableZone, toZone: EditableZone, positionArg: 'top' | 'bottom' = 'top') {
     if (viewMode || !player) return
-    const cards = [...player.zones[fromZone].cards]
-    cards.forEach(card => moveCard(playerIndex, card.id, fromZone, toZone, positionArg))
+    moveAllCards(playerIndex, fromZone, toZone, positionArg)
   }
 
   function discardRandom() {
@@ -437,14 +432,9 @@ export function PlayerZone({ playerIndex, position, revealAll, viewMode, playerO
       <div className={styles.zoneLabelRow}>
         <span
           className={styles.zoneLabelText}
-          style={{
-            cursor: clickable ? 'pointer' : 'default',
-            whiteSpace: 'normal',
-            wordBreak: 'break-word',
-            fontSize: 'clamp(0.5rem, 0.85vw, 0.62rem)',
-            lineHeight: 1.2,
-          }}
+          style={{ cursor: clickable ? 'pointer' : 'default' }}
           onClick={() => clickable && expandKey && toggle(expandKey)}
+          title={`${label}${count !== null ? ` (${count})` : ''}`}
         >
           {label}{count !== null ? ` (${count})` : ''}
         </span>
@@ -462,7 +452,7 @@ export function PlayerZone({ playerIndex, position, revealAll, viewMode, playerO
   const commandWide = p.zones.command.cards.length > 1
 
   const handSection = (
-    <div className={styles.zoneSection} style={{ flex: 1, minWidth: 0 }}>
+    <div className={styles.zoneSection} style={{ flex: 1, minWidth: 'max-content' }}>
       {zoneHeader('Hand', handCount, viewMode && !handRevealed ? null : 'hand', [
         { label: 'Move all to Library', action: () => moveAllFromZone('hand', 'library') },
         { label: 'Move all to Bottom of Library', action: () => moveAllFromZone('hand', 'library', 'bottom') },
@@ -475,9 +465,10 @@ export function PlayerZone({ playerIndex, position, revealAll, viewMode, playerO
   )
 
   const librarySection = (
-    <div className={styles.zoneSection} style={fixedZoneStyle}>
-      {zoneHeader('Library', libCount, viewMode ? null : 'library', [
+    <div className={styles.zoneSection}>
+      {zoneHeader('Lib', libCount, viewMode ? null : 'library', [
         { label: 'View Top Card', action: () => toggle('library') },
+        { label: 'Move all to Hand', action: () => moveAllFromZone('library', 'hand') },
         { label: 'Move all to Graveyard', action: () => moveAllFromZone('library', 'graveyard') },
         { label: 'Move all to Exile', action: () => moveAllFromZone('library', 'exile') },
         { label: 'Shuffle', action: () => shuffleLibrary(playerIndex) },
@@ -502,8 +493,8 @@ export function PlayerZone({ playerIndex, position, revealAll, viewMode, playerO
   )
 
   const graveyardSection = (
-    <div className={styles.zoneSection} style={fixedZoneStyle}>
-      {zoneHeader('Graveyard', zoneCount('graveyard'), 'graveyard', [
+    <div className={styles.zoneSection}>
+      {zoneHeader('GY', zoneCount('graveyard'), 'graveyard', [
         { label: 'View all', action: () => toggle('graveyard') },
         { label: 'Move all to Hand', action: () => moveAllFromZone('graveyard', 'hand') },
         { label: 'Move all to Library', action: () => moveAllFromZone('graveyard', 'library') },
@@ -515,10 +506,9 @@ export function PlayerZone({ playerIndex, position, revealAll, viewMode, playerO
   )
 
   const exileSection = (
-    <div className={styles.zoneSection} style={fixedZoneStyle}>
-      {zoneHeader('Exile', zoneCount('exile'), 'exile', [
+    <div className={styles.zoneSection}>
+      {zoneHeader('Ex', zoneCount('exile'), 'exile', [
         { label: 'View all', action: () => toggle('exile') },
-        { label: 'Move all to Battlefield', action: () => moveAllFromZone('exile', 'battlefield') },
         { label: 'Move all to Hand', action: () => moveAllFromZone('exile', 'hand') },
         { label: 'Move all to Graveyard', action: () => moveAllFromZone('exile', 'graveyard') },
         { label: 'Move all to Library', action: () => moveAllFromZone('exile', 'library') },
@@ -529,12 +519,9 @@ export function PlayerZone({ playerIndex, position, revealAll, viewMode, playerO
   )
 
   const commandSection = (
-    <div className={styles.zoneSection} style={commandWide ? { width: 'calc(var(--card-w) + 16px)', minWidth: 'calc(var(--card-w) + 16px)' } : fixedZoneStyle}>
+    <div className={styles.zoneSection} style={commandWide ? { minWidth: 'calc(var(--card-w) + 16px)' } : undefined}>
       <div className={styles.zoneLabelRow}>
-        <span
-          className={styles.zoneLabelText}
-          style={{ cursor: 'default', whiteSpace: 'normal', wordBreak: 'break-word', fontSize: 'clamp(0.5rem, 0.85vw, 0.62rem)', lineHeight: 1.2 }}
-        >
+        <span className={styles.zoneLabelText} style={{ cursor: 'default' }}>
           Command
         </span>
       </div>
@@ -960,18 +947,9 @@ function LibraryOrderModal({ cards, targetCount, onConfirm, onClose }: {
   const [mode, setMode] = useState<'choose' | 'manual'>('choose')
   const [orderedCards, setOrderedCards] = useState<Card[]>(cards)
 
-  function makePlaceholder(i: number): Card {
-    return {
-      id: `placeholder-${Date.now()}-${i}`,
-      name: 'Unknown card',
-      cardType: 'instant',
-      faceDown: true,
-    }
-  }
-
   function buildFinalLibrary(ordered: Card[]): Card[] {
     const placeholderCount = Math.max(0, targetCount - ordered.length)
-    const placeholders = Array.from({ length: placeholderCount }, (_, i) => makePlaceholder(i))
+    const placeholders = Array.from({ length: placeholderCount }, () => makeUnknownCard())
     return [...placeholders, ...[...ordered].reverse()]
   }
 
