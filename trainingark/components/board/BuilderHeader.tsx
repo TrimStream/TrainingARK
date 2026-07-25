@@ -31,7 +31,7 @@ interface ScenarioListItem {
   published: boolean
 }
 
-export function BuilderHeader() {
+export function BuilderHeader({ initialScenarioId }: { initialScenarioId?: string } = {}) {
   const {
     scenarioTitle, setScenarioTitle,
     scenarioDescription, setScenarioDescription,
@@ -319,6 +319,21 @@ export function BuilderHeader() {
       setLoadingScenario(false)
     }
   }
+
+  // Deep link from the dashboard: /builder?id=xxx opens pre-loaded. This reuses
+  // the Load modal's own loader so there is a single load path — including its
+  // autosave suppression and its scenarioIdRef assignment, which is what makes
+  // the next autosave a PUT rather than a second POST.
+  const autoLoadedRef = useRef(false)
+
+  useEffect(() => {
+    if (!initialScenarioId || autoLoadedRef.current) return
+    autoLoadedRef.current = true
+    void handleLoadScenario(initialScenarioId)
+    // handleLoadScenario is a fresh closure every render; the ref guard makes
+    // this strictly one-shot, so re-running on that identity would be wrong.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialScenarioId])
 
   return (
     <div className={styles.header}>

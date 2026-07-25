@@ -42,8 +42,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   callbacks: {
     // Carry the database user id through the JWT so `session.user.id` is the
     // real Scenario.authorId value everything downstream compares against.
-    jwt({ token, user }) {
+    jwt({ token, user, trigger, session }) {
       if (user?.id) token.id = user.id
+      // Sessions are JWTs, so a display-name change in the database is invisible
+      // until the token itself is rewritten. The settings page triggers this by
+      // calling useSession().update({ name }) after a successful save.
+      if (trigger === 'update' && typeof session?.name === 'string') {
+        token.name = session.name
+      }
       return token
     },
     session({ session, token }) {

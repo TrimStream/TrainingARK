@@ -24,6 +24,7 @@ const MAIN_NAV: NavItem[] = [
 const AUTH_NAV: NavItem[] = [
   { href: '/dashboard', label: 'You', icon: '☺' },
   { href: '/history', label: 'History', icon: '↺' },
+  { href: '/settings', label: 'Settings', icon: '⚙' },
 ]
 
 const EXPLORE_NAV: NavItem[] = [
