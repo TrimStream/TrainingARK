@@ -15,9 +15,6 @@ interface PlayerZoneProps {
   playerIndex: number
   position: PlayerPosition
   revealAll?: boolean
-  // viewMode: read-only rendering for the scenario viewer.
-  // playerOverride supplies the snapshot data instead of the builder store,
-  // so the viewer never reads or leaks live builder state.
   viewMode?: boolean
   playerOverride?: Player
 }
@@ -26,6 +23,10 @@ const CARD_BACK = '/back_magic.png'
 const CARD_W = 80
 const CARD_H = 112
 const HAND_OVERLAP = 36
+
+// Every non-hand zone is locked to exactly one card's width via this style.
+// Command widens itself separately when a player has two commanders.
+const fixedZoneStyle: React.CSSProperties = { width: 'var(--card-w)', minWidth: 'var(--card-w)' }
 
 type ExpandableZone = 'hand' | 'graveyard' | 'exile' | 'library'
 
@@ -138,7 +139,6 @@ export function PlayerZone({ playerIndex, position, revealAll, viewMode, playerO
     if (!el) return
     const observer = new ResizeObserver(entries => {
       setFanWidth(entries[0].contentRect.width)
-      // Read the live clamp() result so fan overlap scales with the cards
       const v = getComputedStyle(el).getPropertyValue('--card-w')
       const px = parseFloat(v)
       if (!isNaN(px) && px > 0) setCardW(px)
@@ -375,13 +375,15 @@ export function PlayerZone({ playerIndex, position, revealAll, viewMode, playerO
     )
   }
 
+  // Piles (graveyard/exile) always show a single top card, so they are
+  // always exactly one card in size — no cards.length-based width here.
   function renderPile(cards: Card[], count: number, revealed: boolean, zone: EditableZone) {
-    if (count === 0) return <div className={styles.emptyPile} style={{ width: cards.length === 1 ? 'var(--card-w)' : 'calc(var(--card-w) + 16px)' }} />
+    if (count === 0) return <div className={styles.emptyPile} style={{ width: 'var(--card-w)', height: 'var(--card-h)' }} />
     const topCard = cards[cards.length - 1]
     if (!topCard) {
       return (
-        <div style={{ width: cards.length === 1 ? 'var(--card-w)' : 'calc(var(--card-w) + 16px)' }}>
-          <Image src={CARD_BACK} alt="top card" width={CARD_W} height={CARD_H} style={{ borderRadius: 4, display: 'block', width: CARD_W, height: CARD_H }} />
+        <div style={{ width: 'var(--card-w)', height: 'var(--card-h)' }}>
+          <Image src={CARD_BACK} alt="top card" width={CARD_W} height={CARD_H} style={{ borderRadius: 4, display: 'block', width: 'var(--card-w)', height: 'var(--card-h)' }} />
         </div>
       )
     }
@@ -400,11 +402,13 @@ export function PlayerZone({ playerIndex, position, revealAll, viewMode, playerO
     )
   }
 
+  // Command zone: one card width normally, widens only for two commanders (partners).
   function renderCommandZone() {
     const cards = p.zones.command.cards
-    if (cards.length === 0) return <div className={styles.emptyPile} style={{ width: cards.length === 1 ? 'var(--card-w)' : 'calc(var(--card-w) + 16px)' }} />
+    if (cards.length === 0) return <div className={styles.emptyPile} style={{ width: 'var(--card-w)', height: 'var(--card-h)' }} />
+    const wide = cards.length > 1
     return (
-      <div className={styles.commandWrap} style={{ width: cards.length === 1 ? CARD_W : CARD_W + 16 }}>
+      <div className={styles.commandWrap} style={{ width: wide ? 'calc(var(--card-w) + 16px)' : 'var(--card-w)' }}>
         {cards.map((card: Card, i: number) => (
           <div key={card.id} className={styles.commandCardSlot} style={{ left: i * 16, zIndex: i }}>
             <BoardCard
@@ -433,7 +437,13 @@ export function PlayerZone({ playerIndex, position, revealAll, viewMode, playerO
       <div className={styles.zoneLabelRow}>
         <span
           className={styles.zoneLabelText}
-          style={!clickable ? { cursor: 'default' } : undefined}
+          style={{
+            cursor: clickable ? 'pointer' : 'default',
+            whiteSpace: 'normal',
+            wordBreak: 'break-word',
+            fontSize: 'clamp(0.5rem, 0.85vw, 0.62rem)',
+            lineHeight: 1.2,
+          }}
           onClick={() => clickable && expandKey && toggle(expandKey)}
         >
           {label}{count !== null ? ` (${count})` : ''}
@@ -449,6 +459,7 @@ export function PlayerZone({ playerIndex, position, revealAll, viewMode, playerO
   }
 
   const libCount = zoneCount('library')
+  const commandWide = p.zones.command.cards.length > 1
 
   const handSection = (
     <div className={styles.zoneSection} style={{ flex: 1, minWidth: 0 }}>
@@ -464,7 +475,7 @@ export function PlayerZone({ playerIndex, position, revealAll, viewMode, playerO
   )
 
   const librarySection = (
-    <div className={styles.zoneSection}>
+    <div className={styles.zoneSection} style={fixedZoneStyle}>
       {zoneHeader('Library', libCount, viewMode ? null : 'library', [
         { label: 'View Top Card', action: () => toggle('library') },
         { label: 'Move all to Graveyard', action: () => moveAllFromZone('library', 'graveyard') },
@@ -472,7 +483,7 @@ export function PlayerZone({ playerIndex, position, revealAll, viewMode, playerO
         { label: 'Shuffle', action: () => shuffleLibrary(playerIndex) },
       ], libraryAddBtnRef, () => { const r = libraryAddBtnRef.current?.getBoundingClientRect(); if (r) handleAddCard('library', r) })}
       {fetchingCards && !viewMode ? (
-        <div className={styles.emptyPile} style={{ width: CARD_W, height: CARD_H, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div className={styles.emptyPile} style={{ width: 'var(--card-w)', height: 'var(--card-h)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <span style={{ fontSize: '0.58rem', color: 'rgba(232,224,212,0.4)' }}>Loading...</span>
         </div>
       ) : (
@@ -482,8 +493,8 @@ export function PlayerZone({ playerIndex, position, revealAll, viewMode, playerO
           title={!viewMode && libCount > 0 ? 'Click to draw' : ''}
         >
           {libCount > 0
-            ? <Image src={CARD_BACK} alt="Library" width={CARD_W} height={CARD_H} style={{ borderRadius: 4, display: 'block', width: CARD_W, height: CARD_H }} />
-            : <div className={styles.emptyPile} style={{ width: cards.length === 1 ? 'var(--card-w)' : 'calc(var(--card-w) + 16px)' }} />
+            ? <Image src={CARD_BACK} alt="Library" width={CARD_W} height={CARD_H} style={{ borderRadius: 4, display: 'block', width: 'var(--card-w)', height: 'var(--card-h)' }} />
+            : <div className={styles.emptyPile} style={{ width: 'var(--card-w)', height: 'var(--card-h)' }} />
           }
         </div>
       )}
@@ -491,7 +502,7 @@ export function PlayerZone({ playerIndex, position, revealAll, viewMode, playerO
   )
 
   const graveyardSection = (
-    <div className={styles.zoneSection}>
+    <div className={styles.zoneSection} style={fixedZoneStyle}>
       {zoneHeader('Graveyard', zoneCount('graveyard'), 'graveyard', [
         { label: 'View all', action: () => toggle('graveyard') },
         { label: 'Move all to Hand', action: () => moveAllFromZone('graveyard', 'hand') },
@@ -504,7 +515,7 @@ export function PlayerZone({ playerIndex, position, revealAll, viewMode, playerO
   )
 
   const exileSection = (
-    <div className={styles.zoneSection}>
+    <div className={styles.zoneSection} style={fixedZoneStyle}>
       {zoneHeader('Exile', zoneCount('exile'), 'exile', [
         { label: 'View all', action: () => toggle('exile') },
         { label: 'Move all to Battlefield', action: () => moveAllFromZone('exile', 'battlefield') },
@@ -518,9 +529,14 @@ export function PlayerZone({ playerIndex, position, revealAll, viewMode, playerO
   )
 
   const commandSection = (
-    <div className={styles.zoneSection}>
+    <div className={styles.zoneSection} style={commandWide ? { width: 'calc(var(--card-w) + 16px)', minWidth: 'calc(var(--card-w) + 16px)' } : fixedZoneStyle}>
       <div className={styles.zoneLabelRow}>
-        <span className={styles.zoneLabelText} style={{ cursor: 'default' }}>Command</span>
+        <span
+          className={styles.zoneLabelText}
+          style={{ cursor: 'default', whiteSpace: 'normal', wordBreak: 'break-word', fontSize: 'clamp(0.5rem, 0.85vw, 0.62rem)', lineHeight: 1.2 }}
+        >
+          Command
+        </span>
       </div>
       {renderCommandZone()}
     </div>

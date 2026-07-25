@@ -295,3 +295,52 @@
   color: rgba(232, 224, 212, 0.4);
   text-transform: capitalize;
 }
+.publishBtn {
+  background: none;
+  border: 1px solid rgba(201, 168, 76, 0.45);
+  border-radius: 4px;
+  color: #c9a84c;
+  cursor: pointer;
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 3px 10px;
+  flex-shrink: 0;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+
+.publishBtn:hover:not(:disabled) { background: rgba(201, 168, 76, 0.12); }
+.publishBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.publishBtnLive {
+  background: rgba(106, 176, 106, 0.15);
+  border-color: rgba(106, 176, 106, 0.5);
+  color: #6ab06a;
+}
+
+.publishBtnLive:hover:not(:disabled) { background: rgba(106, 176, 106, 0.25); }
+
+.deleteBtn {
+  background: none;
+  border: 1px solid rgba(224, 112, 112, 0.35);
+  border-radius: 4px;
+  color: rgba(224, 112, 112, 0.85);
+  cursor: pointer;
+  font-size: 0.72rem;
+  padding: 4px 12px;
+  flex-shrink: 0;
+  transition: background 0.12s, border-color 0.12s;
+}
+
+.deleteBtn:hover:not(:disabled) {
+  background: rgba(224, 112, 112, 0.12);
+  border-color: #e07070;
+}
+
+.deleteBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.saveStatusPending {
+  font-size: 0.68rem;
+  color: rgba(232, 224, 212, 0.5);
+}

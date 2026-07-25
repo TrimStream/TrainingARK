@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { signOut } from 'next-auth/react'
 import { useAuth } from '@/lib/useAuth'
 import styles from './Sidebar.module.css'
 
@@ -63,6 +64,14 @@ export function Sidebar({ open }: SidebarProps) {
           <nav className={styles.navSection}>
             {open && <span className={styles.sectionTitle}>You</span>}
             {AUTH_NAV.map(renderItem)}
+            <button
+              className={`${styles.navItem} ${styles.signOutItem} ${!open ? styles.navItemCollapsed : ''}`}
+              onClick={() => signOut({ callbackUrl: '/' })}
+              title={!open ? 'Sign out' : undefined}
+            >
+              <span className={styles.navIcon}>⏻</span>
+              {open && <span className={styles.navLabel}>Sign out</span>}
+            </button>
           </nav>
           <div className={styles.divider} />
         </>

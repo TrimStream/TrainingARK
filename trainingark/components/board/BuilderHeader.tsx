@@ -1,8 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useRouter } from 'next/navigation'
 import { useBuilderStore } from '@/store/builderStore'
+import { useAuth } from '@/lib/useAuth'
 import styles from './BuilderHeader.module.css'
 
 const DIFFICULTY_LABELS = {
@@ -11,12 +13,20 @@ const DIFFICULTY_LABELS = {
   advanced: 'Advanced',
 } as const
 
+// Quiet period after the last change before an autosave fires.
+const AUTOSAVE_DELAY_MS = 3000
+// How long "Saved" stays on screen before the indicator goes quiet.
+const SAVED_INDICATOR_MS = 2000
+
+type SaveState = 'idle' | 'saving' | 'saved' | 'error'
+
 interface ScenarioListItem {
   id: string
   title: string
   description: string
   difficulty: string
   updatedAt: string
+  published: boolean
 }
 
 export function BuilderHeader() {
@@ -26,20 +36,39 @@ export function BuilderHeader() {
     difficulty, setDifficulty,
     players, steps, decklists,
     firstPlayerIndex, currentTurnPlayerIndex, turnNumber, handSizes,
-    loadScenario,
+    loadScenario, resetScenario,
     stack, logLines, lastSavedLogIndex, setupComplete, scenarioStarted,
   } = useBuilderStore()
+
+  const router = useRouter()
+  const { user } = useAuth()
 
   const [editingTitle, setEditingTitle] = useState(false)
   const [titleInput, setTitleInput] = useState('')
   const [showDetails, setShowDetails] = useState(false)
-  const [saving, setSaving] = useState(false)
   const [savedScenarioId, setSavedScenarioId] = useState<string | null>(null)
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'error'>('idle')
+  const [scenarioAuthorId, setScenarioAuthorId] = useState<string | null>(null)
+  const [published, setPublished] = useState(false)
+  const [publishing, setPublishing] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [showLoad, setShowLoad] = useState(false)
   const [scenarioList, setScenarioList] = useState<ScenarioListItem[]>([])
   const [loadingList, setLoadingList] = useState(false)
   const [loadingScenario, setLoadingScenario] = useState(false)
+
+  // One save-state for both the manual button and autosave, so the header
+  // never shows two competing save indicators.
+  const [saveState, setSaveState] = useState<SaveState>('idle')
+  const [saveError, setSaveError] = useState<string | null>(null)
+
+  // Refs, not state: the debounced timer must always see current values.
+  const scenarioIdRef = useRef<string | null>(null)
+  const savingRef = useRef(false)
+  const rerunRef = useRef(false)
+  const mountedRef = useRef(false)
+  const skipNextAutosaveRef = useRef(false)
+  const lastSavedBodyRef = useRef<string | null>(null)
+  const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   function commitTitle() {
     if (titleInput.trim()) setScenarioTitle(titleInput.trim())
@@ -57,13 +86,11 @@ export function BuilderHeader() {
     : []
 
   const canPreview = !!savedScenarioId && steps.length > 0
+  const canSave = setupComplete.some(Boolean)
+  const isOwner = !!savedScenarioId && !!user && scenarioAuthorId === user.id
 
-  async function handleSaveScenario() {
-    if (saving) return
-    setSaving(true)
-    setSaveStatus('idle')
-
-    const payload = {
+  function buildPayload() {
+    return {
       title: scenarioTitle,
       description: scenarioDescription,
       difficulty,
@@ -86,25 +113,153 @@ export function BuilderHeader() {
         },
       },
     }
+  }
+
+  function flashSaved() {
+    setSaveState('saved')
+    if (savedTimerRef.current) clearTimeout(savedTimerRef.current)
+    savedTimerRef.current = setTimeout(() => setSaveState('idle'), SAVED_INDICATOR_MS)
+  }
+
+  async function performSave({ silent }: { silent: boolean }) {
+    // The builder is behind a server-side login gate, so a missing session
+    // here is a genuine error rather than something to skip quietly.
+    if (!user) {
+      setSaveState('error')
+      setSaveError('Not signed in — sign in again to save.')
+      return
+    }
+
+    const body = JSON.stringify(buildPayload())
+
+    // Autosave skips no-op writes (e.g. right after a manual save).
+    if (silent && body === lastSavedBodyRef.current) return
+
+    if (savingRef.current) {
+      // A save is already in flight; queue one more pass afterwards so the
+      // newest state still lands and we never double-POST a new scenario.
+      rerunRef.current = true
+      return
+    }
+
+    savingRef.current = true
+    setSaveState('saving')
+    setSaveError(null)
 
     try {
-      const url = savedScenarioId ? `/api/scenarios/${savedScenarioId}` : '/api/scenarios'
-      const method = savedScenarioId ? 'PUT' : 'POST'
-      const res = await fetch(url, {
-        method,
+      const id = scenarioIdRef.current
+      const res = await fetch(id ? `/api/scenarios/${id}` : '/api/scenarios', {
+        method: id ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body,
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const result = await res.json()
-      if (result.id) setSavedScenarioId(result.id)
-      setSaveStatus('saved')
-      setTimeout(() => setSaveStatus('idle'), 2000)
+
+      if (result.id) {
+        scenarioIdRef.current = result.id
+        setSavedScenarioId(result.id)
+      }
+      if (result.authorId !== undefined) setScenarioAuthorId(result.authorId)
+      if (typeof result.published === 'boolean') setPublished(result.published)
+
+      lastSavedBodyRef.current = body
+      flashSaved()
     } catch (err) {
       console.error('Save failed:', err)
-      setSaveStatus('error')
+      setSaveState('error')
+      setSaveError('Save failed')
     } finally {
-      setSaving(false)
+      savingRef.current = false
+      if (rerunRef.current) {
+        rerunRef.current = false
+        void saveRef.current({ silent: true })
+      }
+    }
+  }
+
+  // Always call the latest closure from timers and the retry path.
+  const saveRef = useRef(performSave)
+  saveRef.current = performSave
+
+  // Debounced autosave. Starts only once the same gate that enables the
+  // manual save button is met.
+  useEffect(() => {
+    if (!mountedRef.current) {
+      mountedRef.current = true
+      return
+    }
+    if (skipNextAutosaveRef.current) {
+      skipNextAutosaveRef.current = false
+      return
+    }
+    if (!canSave) return
+
+    const timer = setTimeout(() => { void saveRef.current({ silent: true }) }, AUTOSAVE_DELAY_MS)
+    return () => clearTimeout(timer)
+  }, [
+    canSave,
+    players, stack, steps, logLines, decklists,
+    scenarioTitle, scenarioDescription, difficulty,
+    firstPlayerIndex, currentTurnPlayerIndex, turnNumber, handSizes,
+    setupComplete, scenarioStarted, lastSavedLogIndex,
+  ])
+
+  useEffect(() => () => {
+    if (savedTimerRef.current) clearTimeout(savedTimerRef.current)
+  }, [])
+
+  async function handleTogglePublish() {
+    if (!savedScenarioId || publishing) return
+    setPublishing(true)
+    setSaveError(null)
+    try {
+      const res = await fetch(`/api/scenarios/${savedScenarioId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ published: !published }),
+      })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const result = await res.json()
+      setPublished(!!result.published)
+    } catch (err) {
+      console.error('Publish toggle failed:', err)
+      setSaveState('error')
+      setSaveError('Publish failed')
+    } finally {
+      setPublishing(false)
+    }
+  }
+
+  async function handleDelete() {
+    if (!savedScenarioId || deleting) return
+    const confirmed = window.confirm(
+      `Delete "${scenarioTitle}" permanently? This cannot be undone.`
+    )
+    if (!confirmed) return
+
+    setDeleting(true)
+    try {
+      const res = await fetch(`/api/scenarios/${savedScenarioId}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+
+      skipNextAutosaveRef.current = true
+      scenarioIdRef.current = null
+      lastSavedBodyRef.current = null
+      setSavedScenarioId(null)
+      setScenarioAuthorId(null)
+      setPublished(false)
+      setSaveState('idle')
+      setSaveError(null)
+      resetScenario()
+      router.replace('/builder')
+      router.refresh()
+    } catch (err) {
+      console.error('Delete failed:', err)
+      setSaveState('error')
+      setSaveError('Delete failed')
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -117,7 +272,9 @@ export function BuilderHeader() {
     setShowLoad(true)
     setLoadingList(true)
     try {
-      const res = await fetch('/api/scenarios')
+      // `mine=1` — the unfiltered list also contains other authors' published
+      // scenarios, which you can't save over anyway.
+      const res = await fetch('/api/scenarios?mine=1')
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const list = await res.json()
       setScenarioList(list)
@@ -136,13 +293,23 @@ export function BuilderHeader() {
       const res = await fetch(`/api/scenarios/${id}`)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const scenario = await res.json()
+
+      // Loading rewrites most of the store; don't let that churn trigger an
+      // immediate autosave of what we just read back.
+      skipNextAutosaveRef.current = true
       loadScenario({
         title: scenario.title,
         description: scenario.description,
         difficulty: scenario.difficulty,
         data: scenario.data,
       })
+      scenarioIdRef.current = scenario.id
+      lastSavedBodyRef.current = null
       setSavedScenarioId(scenario.id)
+      setScenarioAuthorId(scenario.authorId ?? null)
+      setPublished(!!scenario.published)
+      setSaveState('idle')
+      setSaveError(null)
       setShowLoad(false)
     } catch (err) {
       console.error('Failed to load scenario:', err)
@@ -178,11 +345,26 @@ export function BuilderHeader() {
         <span className={`${styles.difficultyBadge} ${styles[`badge_${difficulty}`]}`}>
           {DIFFICULTY_LABELS[difficulty]}
         </span>
+        {savedScenarioId && (
+          <button
+            className={`${styles.publishBtn} ${published ? styles.publishBtnLive : ''}`}
+            onClick={handleTogglePublish}
+            disabled={publishing}
+            title={published
+              ? 'Unpublish — hides it from everyone but you'
+              : 'Publish — makes it visible to everyone'}
+          >
+            {publishing ? '...' : published ? 'Published' : 'Publish'}
+          </button>
+        )}
       </div>
 
       <div className={styles.right}>
-        {saveStatus === 'saved' && <span className={styles.saveStatusOk}>Saved</span>}
-        {saveStatus === 'error' && <span className={styles.saveStatusError}>Save failed</span>}
+        {saveState === 'saving' && <span className={styles.saveStatusPending}>Saving...</span>}
+        {saveState === 'saved' && <span className={styles.saveStatusOk}>Saved</span>}
+        {saveState === 'error' && (
+          <span className={styles.saveStatusError}>{saveError ?? 'Save failed'}</span>
+        )}
         <button className={styles.detailsBtn} onClick={openLoadModal}>
           Load
         </button>
@@ -200,12 +382,22 @@ export function BuilderHeader() {
         </button>
         <button
           className={styles.saveScenarioBtn}
-          onClick={handleSaveScenario}
-          disabled={saving || !setupComplete.some(Boolean)}
-          title={!setupComplete.some(Boolean) ? 'Set up at least one player first' : 'Save scenario to database'}
+          onClick={() => { void performSave({ silent: false }) }}
+          disabled={saveState === 'saving' || !canSave}
+          title={!canSave ? 'Set up at least one player first' : 'Save scenario to database'}
         >
-          {saving ? 'Saving...' : savedScenarioId ? 'Update scenario' : 'Save scenario'}
+          {savedScenarioId ? 'Update scenario' : 'Save scenario'}
         </button>
+        {isOwner && (
+          <button
+            className={styles.deleteBtn}
+            onClick={handleDelete}
+            disabled={deleting}
+            title="Delete this scenario permanently"
+          >
+            {deleting ? 'Deleting...' : 'Delete'}
+          </button>
+        )}
         <button className={styles.detailsBtn} onClick={() => setShowDetails(true)}>
           Details
         </button>
@@ -292,7 +484,7 @@ export function BuilderHeader() {
                   >
                     <span className={styles.loadRowTitle}>{s.title}</span>
                     <span className={styles.loadRowMeta}>
-                      {s.difficulty} · {new Date(s.updatedAt).toLocaleDateString()}
+                      {s.published ? 'Published' : 'Draft'} · {s.difficulty} · {new Date(s.updatedAt).toLocaleDateString()}
                     </span>
                   </button>
                 ))}

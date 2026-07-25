@@ -105,3 +105,14 @@
 }
 
 .signInBtn:hover { background: rgba(201, 168, 76, 0.1); }
+/* Sign-out shares .navItem's layout; these reset button chrome. */
+.signOutItem {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  width: 100%;
+  text-align: left;
+}
+
+.signOutItem:hover { color: #c9a84c; }

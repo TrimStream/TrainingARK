@@ -19,6 +19,12 @@ model Scenario {
   published   Boolean  @default(false)
   data        Json
   events      Event[]
+
+  // Nullable: scenarios created before auth existed have no author.
+  authorId String?
+  author   User?   @relation(fields: [authorId], references: [id])
+
+  @@index([authorId])
 }
 
 model Event {
@@ -27,4 +33,60 @@ model Event {
   scenario   Scenario @relation(fields: [scenarioId], references: [id])
   type       String
   createdAt  DateTime @default(now())
+}
+
+// --- Auth.js (NextAuth) models -------------------------------------------
+// Shape required by @auth/prisma-adapter, plus passwordHash for the
+// Credentials provider (not part of the adapter's default schema).
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  passwordHash  String?
+  createdAt     DateTime  @default(now())
+
+  accounts  Account[]
+  sessions  Session[]
+  scenarios Scenario[]
+}
+
+model Account {
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@id([identifier, token])
 }

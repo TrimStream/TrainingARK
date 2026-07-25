@@ -68,7 +68,7 @@ interface BuilderState {
   setCurrentTurnPlayer: (index: number) => void
   setTurnNumber: (n: number) => void
   setHandSize: (playerIndex: number, size: number) => void
-  saveStep: (label: string) => void
+  saveStep: (label: string, decisionPoint?: DecisionPoint) => void
   deleteStep: (stepId: string) => void
   dismissDuplicateWarning: (cardId: string) => void
   isDuplicate: (playerIndex: number, cardName: string, excludeCardId?: string) => boolean
@@ -97,6 +97,7 @@ interface BuilderState {
       }
     }
   }) => void
+  resetScenario: () => void
   scenarioTitle: string
   scenarioDescription: string
   difficulty: 'beginner' | 'intermediate' | 'advanced'
@@ -260,7 +261,7 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
     set({ handSizes: current })
   },
 
-  saveStep: (label) => {
+  saveStep: (label, decisionPoint) => {
     const state = get()
     if (!state.players) return
     const newStep: ScenarioStep = {
@@ -271,6 +272,7 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
         players: JSON.parse(JSON.stringify(state.players)),
         stack: JSON.parse(JSON.stringify(state.stack)),
       },
+      ...(decisionPoint && { decisionPoint }),
     }
     set({
       steps: [...state.steps, newStep],
@@ -331,6 +333,29 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
     })
   },
 
+
+  // Back to a blank builder — used after deleting the loaded scenario.
+  resetScenario: () => {
+    history = []
+    set({
+      players: JSON.parse(JSON.stringify(defaultPlayers)),
+      stack: [],
+      setupComplete: [false, false, false, false],
+      logLines: [],
+      decklists: [[], [], [], []],
+      scenarioStarted: false,
+      dismissedDuplicateWarnings: new Set(),
+      firstPlayerIndex: 0,
+      currentTurnPlayerIndex: 0,
+      turnNumber: 1,
+      handSizes: [7, 7, 7, 7],
+      steps: [],
+      lastSavedLogIndex: 0,
+      scenarioTitle: 'Untitled Scenario',
+      scenarioDescription: '',
+      difficulty: 'beginner',
+    })
+  },
 
   isDuplicate: (playerIndex, cardName, excludeCardId) => {
     const state = get()
@@ -474,6 +499,7 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
 
     const player = state.players[playerIndex]
 
+    // Token stacking: increment existing same-name token instead of adding a new card
     if (card.isToken && zone === 'battlefield') {
       const result = stackExistingToken(state.players, playerIndex, card.name)
       if (result) {
@@ -493,7 +519,8 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
       zones: {
         ...player.zones,
         [zone]: { ...zoneData, cards: [...zoneData.cards, card], cardCount: count + 1 },
-        library: zone !== 'library'
+        // Tokens are created from nothing — only real cards drawn from the library decrement it.
+        library: (zone !== 'library' && !card.isToken)
           ? { ...player.zones.library, cardCount: Math.max(0, libCount - 1) }
           : player.zones.library,
       },
@@ -516,7 +543,7 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
       zones: {
         ...player.zones,
         [zone]: { ...zoneData, cards: [...zoneData.cards, card], cardCount: count + 1 },
-        library: zone !== 'library'
+        library: (zone !== 'library' && !card.isToken)
           ? { ...player.zones.library, cardCount: Math.max(0, libCount - 1) }
           : player.zones.library,
       },
@@ -532,11 +559,13 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
     const updatedZones = { ...player.zones }
     let found = false
     let removedFromZone: EditableZone | null = null
+    let removedCard: Card | null = null
     for (const zoneName in updatedZones) {
       const zone = updatedZones[zoneName as EditableZone]
       const cardIndex = zone.cards.findIndex((c: Card) => c.id === cardId)
       if (cardIndex !== -1) {
         const updatedCards = [...zone.cards]
+        removedCard = updatedCards[cardIndex]
         updatedCards.splice(cardIndex, 1)
         const count = zone.cardCount ?? zone.cards.length
         updatedZones[zoneName as EditableZone] = { ...zone, cards: updatedCards, cardCount: Math.max(0, count - 1) }
@@ -547,7 +576,9 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
     }
     if (!found) return
 
-    if (removedFromZone && removedFromZone !== 'library') {
+    // Restore library count only for real cards leaving a non-library zone.
+    // Tokens never came from the library, so removing one shouldn't give a card back.
+    if (removedFromZone && removedFromZone !== 'library' && removedCard && !removedCard.isToken) {
       const libCount = updatedZones.library.cardCount ?? updatedZones.library.cards.length
       updatedZones.library = { ...updatedZones.library, cardCount: libCount + 1 }
     }
