@@ -62,6 +62,23 @@ export function TopBar({ onToggleSidebar }: TopBarProps) {
             {menuOpen && (
               <div className={styles.userMenu} role="menu">
                 <span className={styles.userMenuName}>{user.username}</span>
+                <Link
+                  href="/dashboard"
+                  className={styles.userMenuItem}
+                  role="menuitem"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  Dashboard
+                </Link>
+                <Link
+                  href="/settings"
+                  className={styles.userMenuItem}
+                  role="menuitem"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  Settings
+                </Link>
+                <div className={styles.userMenuDivider} />
                 <button
                   className={styles.userMenuItem}
                   role="menuitem"

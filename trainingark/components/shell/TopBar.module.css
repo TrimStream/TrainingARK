@@ -149,9 +149,17 @@
   padding: 7px 10px;
   text-align: left;
   transition: background 0.1s, color 0.1s;
+  text-decoration: none;
+  display: block;
 }
 
 .userMenuItem:hover {
   background: rgba(201, 168, 76, 0.1);
   color: #c9a84c;
+}
+
+.userMenuDivider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.06);
+  margin: 4px 2px;
 }
