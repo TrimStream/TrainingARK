@@ -1,0 +1,246 @@
+/* Form controls mirror components/auth/AuthForm.module.css and the modal
+   mirrors the builder header's details/load modal, so settings feels like the
+   rest of the app rather than a new visual language. */
+
+.section {
+  margin-bottom: 32px;
+}
+
+.heading {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #c9a84c;
+  margin: 0 0 6px;
+}
+
+.hint {
+  font-size: 0.78rem;
+  color: rgba(232, 224, 212, 0.5);
+  line-height: 1.6;
+  margin: 0 0 14px;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 380px;
+}
+
+.fieldLabel {
+  font-size: 0.66rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(232, 224, 212, 0.45);
+  margin-bottom: 5px;
+  display: block;
+}
+
+.input {
+  width: 100%;
+  background: #0a0a0e;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 5px;
+  color: #e8e0d4;
+  font-size: 0.85rem;
+  padding: 9px 11px;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.12s;
+}
+
+.input:focus { border-color: #c9a84c; }
+.input::placeholder { color: rgba(232, 224, 212, 0.28); }
+
+.input:disabled {
+  color: rgba(232, 224, 212, 0.45);
+  cursor: not-allowed;
+}
+
+.submitBtn {
+  background: #8b6914;
+  border: none;
+  border-radius: 5px;
+  color: #f5edda;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 10px 14px;
+  margin-top: 4px;
+  align-self: flex-start;
+  transition: background 0.15s;
+}
+
+.submitBtn:hover:not(:disabled) { background: #c9a84c; }
+.submitBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.error {
+  font-size: 0.74rem;
+  color: #e07070;
+  background: rgba(224, 112, 112, 0.08);
+  border-radius: 5px;
+  padding: 8px 10px;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.success {
+  font-size: 0.74rem;
+  color: #6ab06a;
+  background: rgba(106, 176, 106, 0.08);
+  border-radius: 5px;
+  padding: 8px 10px;
+  line-height: 1.45;
+  margin: 0;
+}
+
+/* --- danger zone ------------------------------------------------------- */
+
+.danger {
+  border: 1px solid rgba(224, 112, 112, 0.35);
+  border-radius: 8px;
+  padding: 18px 18px 20px;
+  margin-top: 40px;
+}
+
+.dangerHeading {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #e07070;
+  margin: 0 0 6px;
+}
+
+.deleteBtn {
+  background: none;
+  border: 1px solid rgba(224, 112, 112, 0.35);
+  border-radius: 4px;
+  color: rgba(224, 112, 112, 0.85);
+  cursor: pointer;
+  font-size: 0.78rem;
+  padding: 8px 16px;
+  transition: background 0.12s, border-color 0.12s;
+}
+
+.deleteBtn:hover:not(:disabled) {
+  background: rgba(224, 112, 112, 0.12);
+  border-color: #e07070;
+}
+
+.deleteBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* --- confirmation modal ------------------------------------------------ */
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal {
+  background: #1a1a24;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+  padding: 20px;
+  width: min(440px, 90vw);
+  max-height: 85vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.modalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.modalTitle {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: #e07070;
+}
+
+.modalClose {
+  background: none;
+  border: none;
+  color: rgba(232, 224, 212, 0.5);
+  cursor: pointer;
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 0 4px;
+}
+
+.modalClose:hover { color: #e8e0d4; }
+
+.modalText {
+  font-size: 0.78rem;
+  color: rgba(232, 224, 212, 0.7);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.modalList {
+  margin: 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.modalList li {
+  font-size: 0.78rem;
+  color: rgba(232, 224, 212, 0.7);
+  line-height: 1.5;
+}
+
+.confirmTarget {
+  color: #e8e0d4;
+  font-weight: 600;
+}
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.cancelBtn {
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  color: rgba(232, 224, 212, 0.5);
+  cursor: pointer;
+  font-size: 0.78rem;
+  padding: 8px 16px;
+  transition: color 0.1s, border-color 0.1s;
+}
+
+.cancelBtn:hover { color: #c9a84c; border-color: #c9a84c; }
+
+.confirmDeleteBtn {
+  background: rgba(224, 112, 112, 0.15);
+  border: 1px solid #e07070;
+  border-radius: 4px;
+  color: #e07070;
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 8px 16px;
+  transition: background 0.12s;
+}
+
+.confirmDeleteBtn:hover:not(:disabled) { background: rgba(224, 112, 112, 0.28); }
+
+.confirmDeleteBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  border-color: rgba(224, 112, 112, 0.35);
+}
