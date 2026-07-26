@@ -1,0 +1,201 @@
+/* Page frame, grid, badges and empty states follow the dashboard so a playlist
+   reads as part of the same library surface. */
+
+.page {
+  padding: 20px 24px 48px;
+  max-width: 1400px;
+}
+
+.backLink {
+  display: inline-block;
+  font-size: 0.72rem;
+  color: rgba(232, 224, 212, 0.45);
+  text-decoration: none;
+  margin-bottom: 12px;
+  transition: color 0.12s;
+}
+
+.backLink:hover { color: #c9a84c; }
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+}
+
+.headerBody {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.title {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #e8e0d4;
+  margin: 0;
+  line-height: 1.25;
+}
+
+.statusBadge {
+  font-size: 0.56rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 3px 8px;
+  border-radius: 3px;
+}
+
+.statusPublic { background: rgba(106, 176, 106, 0.15); color: #6ab06a; }
+.statusPrivate { background: rgba(0, 0, 0, 0.5); color: rgba(232, 224, 212, 0.6); }
+
+.description {
+  font-size: 0.82rem;
+  color: rgba(232, 224, 212, 0.5);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.count {
+  font-size: 0.74rem;
+  color: rgba(232, 224, 212, 0.4);
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.visibilityBtn {
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+  color: rgba(232, 224, 212, 0.6);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.75rem;
+  padding: 7px 14px;
+  transition: color 0.12s, border-color 0.12s;
+}
+
+.visibilityBtn:hover:not(:disabled) { color: #c9a84c; border-color: #c9a84c; }
+.visibilityBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.deleteBtn {
+  background: none;
+  border: 1px solid rgba(224, 112, 112, 0.35);
+  border-radius: 4px;
+  color: rgba(224, 112, 112, 0.85);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.75rem;
+  padding: 7px 14px;
+  transition: background 0.12s, border-color 0.12s;
+}
+
+.deleteBtn:hover:not(:disabled) {
+  background: rgba(224, 112, 112, 0.12);
+  border-color: #e07070;
+}
+
+.deleteBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+/* Wraps a card so the remove control can float over its thumbnail without
+   nesting a button inside the card's link. */
+.itemCell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.removeBtn {
+  position: absolute;
+  top: 8px;
+  right: 62px;
+  z-index: 3;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+  color: rgba(232, 224, 212, 0.6);
+  cursor: pointer;
+  font-size: 0.9rem;
+  line-height: 1;
+  transition: color 0.12s, border-color 0.12s;
+}
+
+.removeBtn:hover:not(:disabled) {
+  color: #e07070;
+  border-color: rgba(224, 112, 112, 0.5);
+}
+
+.removeBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Orphaned entries have no save controls, so their remove sits at the edge. */
+.removeBtnAlone { right: 8px; }
+
+.stateTextError {
+  font-size: 0.82rem;
+  color: #e07070;
+  padding: 16px 0;
+}
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 40px 0;
+}
+
+.emptyTitle {
+  font-size: 1.1rem;
+  color: #e8e0d4;
+  margin: 0;
+}
+
+.emptyText {
+  font-size: 0.82rem;
+  color: rgba(232, 224, 212, 0.5);
+  margin: 0;
+}
+
+.emptyBtn {
+  background: #8b6914;
+  border: none;
+  border-radius: 6px;
+  color: #f5edda;
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 8px 16px;
+  text-decoration: none;
+  margin-top: 6px;
+  transition: background 0.15s;
+}
+
+.emptyBtn:hover { background: #c9a84c; }
