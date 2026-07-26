@@ -18,7 +18,10 @@ model Scenario {
   updatedAt   DateTime @updatedAt
   published   Boolean  @default(false)
   data        Json
-  events      Event[]
+  events        Event[]
+  attempts      Attempt[]
+  bookmarks     Bookmark[]
+  playlistItems PlaylistItem[]
 
   // Nullable: scenarios created before auth existed have no author.
   authorId String?
@@ -35,6 +38,84 @@ model Event {
   createdAt  DateTime @default(now())
 }
 
+// One row per completed playthrough — a full history, not a best-score cache,
+// so there is deliberately no unique constraint on (userId, scenarioId).
+model Attempt {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Nullable with SetNull: a play history outlives the scenario it refers to,
+  // the way a watch history outlives a deleted video. scenarioTitle is the
+  // snapshot that keeps the row readable once the scenario is gone.
+  scenarioId    String?
+  scenario      Scenario? @relation(fields: [scenarioId], references: [id], onDelete: SetNull)
+  scenarioTitle String
+
+  score       Int
+  maxScore    Int
+  completedAt DateTime @default(now())
+
+  @@index([userId, completedAt])
+  @@index([scenarioId])
+}
+
+// Saving a scenario is a toggle, so (userId, scenarioId) is unique. Postgres
+// treats NULLs as distinct in a unique index, which is exactly what is wanted
+// here: one bookmark per live scenario, but several orphaned rows can coexist.
+model Bookmark {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Deliberately SetNull rather than Cascade: a bookmark is the user's own
+  // saved state, not the author's to erase by deleting their scenario.
+  // scenarioTitle is the snapshot that keeps the row readable afterwards,
+  // exactly as Attempt does.
+  scenarioId    String?
+  scenario      Scenario? @relation(fields: [scenarioId], references: [id], onDelete: SetNull)
+  scenarioTitle String
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, scenarioId])
+  @@index([userId, createdAt])
+}
+
+model Playlist {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  // Chosen at creation, same default as Scenario.published. Stored and
+  // settable today; nothing reads it for public access yet.
+  public      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  items PlaylistItem[]
+
+  @@index([userId, updatedAt])
+}
+
+model PlaylistItem {
+  id         String   @id @default(cuid())
+  playlistId String
+  playlist   Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+
+  // Same SetNull + snapshot reasoning as Bookmark: deleting a scenario must
+  // not silently rewrite someone else's playlist.
+  scenarioId    String?
+  scenario      Scenario? @relation(fields: [scenarioId], references: [id], onDelete: SetNull)
+  scenarioTitle String
+
+  addedAt DateTime @default(now())
+
+  @@unique([playlistId, scenarioId])
+  @@index([playlistId, addedAt])
+}
+
 // --- Auth.js (NextAuth) models -------------------------------------------
 // Shape required by @auth/prisma-adapter, plus passwordHash for the
 // Credentials provider (not part of the adapter's default schema).
@@ -48,9 +129,16 @@ model User {
   passwordHash  String?
   createdAt     DateTime  @default(now())
 
+  // Pauses future recording only. Existing Attempt rows are untouched and stay
+  // visible, matching how "pause watch history" behaves.
+  historyEnabled Boolean @default(true)
+
   accounts  Account[]
   sessions  Session[]
   scenarios Scenario[]
+  attempts  Attempt[]
+  bookmarks Bookmark[]
+  playlists Playlist[]
 }
 
 model Account {

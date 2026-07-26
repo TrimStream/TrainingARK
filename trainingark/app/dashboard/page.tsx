@@ -4,7 +4,7 @@ import { DashboardClient } from '@/components/dashboard/DashboardClient'
 
 import type { Metadata } from 'next'
 
-export const metadata: Metadata = { title: 'Your scenarios' }
+export const metadata: Metadata = { title: 'Your library' }
 
 export default async function DashboardPage() {
   // Server-side gate, same as the builder: a logged-out visitor never receives

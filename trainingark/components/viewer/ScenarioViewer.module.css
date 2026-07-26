@@ -40,6 +40,16 @@
   flex-shrink: 0;
 }
 
+/* Groups the step/score readout with the save controls at the header's right
+   edge. Positioned so the playlist popover anchors inside the header. */
+.viewerHeaderRight {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  position: relative;
+}
+
 .boardWrap {
   flex: 1;
   min-height: 0;

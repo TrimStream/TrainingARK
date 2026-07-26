@@ -4,6 +4,8 @@ import { useState, useEffect, useMemo, useRef } from 'react'
 import Link from 'next/link'
 import { Board } from '@/components/board/Board'
 import { TarkLogo } from '@/components/shell/TarkLogo'
+import { useAuth } from '@/lib/useAuth'
+import { ScenarioSaveControls } from '@/components/scenarios/ScenarioSaveControls'
 import type { ViewerScenario, ViewerStep, ViewerDecisionChoice, DecisionResult } from './viewerTypes'
 import { QUALITY_POINTS } from './viewerTypes'
 import styles from './ScenarioViewer.module.css'
@@ -38,6 +40,14 @@ export function ScenarioViewer({ scenarioId }: { scenarioId: string }) {
   const [results, setResults] = useState<DecisionResult[]>([])
   const [shuffledChoices, setShuffledChoices] = useState<ViewerDecisionChoice[]>([])
   const logEndRef = useRef<HTMLDivElement>(null)
+
+  const { user, loading: authLoading } = useAuth()
+  // useAuth() builds a fresh object each render, so effects key off the id.
+  const userId = user?.id
+  const [best, setBest] = useState<{ score: number; maxScore: number } | null>(null)
+  // One write per completed playthrough. Reset by "Play again" so the next
+  // completion records its own row.
+  const attemptRecordedRef = useRef(false)
 
   useEffect(() => {
     fetch(`/api/scenarios/${scenarioId}`)
@@ -75,6 +85,52 @@ export function ScenarioViewer({ scenarioId }: { scenarioId: string }) {
   const maxScore = decisionCount * 2
   const score = results.reduce((sum, r) => sum + r.points, 0)
   const perfectCount = results.filter(r => r.points === 2).length
+
+  // Your best previous run at this scenario, read once on load. Signed-out
+  // visitors never fetch and never see it.
+  useEffect(() => {
+    if (!userId) return
+    let cancelled = false
+
+    fetch(`/api/attempts?scenarioId=${encodeURIComponent(scenarioId)}`)
+      .then(res => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        return res.json()
+      })
+      .then((rows: { score: number; maxScore: number }[]) => {
+        if (cancelled || rows.length === 0) return
+        setBest(rows.reduce((top, r) => (r.score > top.score ? r : top)))
+      })
+      .catch(err => console.error('Could not load your best score:', err))
+
+    return () => { cancelled = true }
+  }, [userId, scenarioId])
+
+  // Record the playthrough once it is finished. The ref is set before the
+  // request so a re-render — or StrictMode's double invoke — cannot double
+  // write. Anonymous play is simply not tracked; nothing is surfaced.
+  useEffect(() => {
+    if (phase !== 'complete' || authLoading) return
+    if (attemptRecordedRef.current) return
+    attemptRecordedRef.current = true
+    if (!userId) return
+
+    fetch('/api/attempts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ scenarioId, score, maxScore }),
+    })
+      .then(res => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        return res.json()
+      })
+      .then((body: { recorded: boolean }) => {
+        // recorded === false means history is paused, which is not a failure.
+        if (!body.recorded) return
+        setBest(prev => (prev && prev.score >= score ? prev : { score, maxScore }))
+      })
+      .catch(err => console.error('Could not save this attempt:', err))
+  }, [phase, authLoading, userId, scenarioId, score, maxScore])
 
   function enterStep(index: number) {
     const step = steps[index]
@@ -118,6 +174,8 @@ export function ScenarioViewer({ scenarioId }: { scenarioId: string }) {
   }
 
   function handleRestart() {
+    // A replay is a new playthrough, so it gets to record its own attempt.
+    attemptRecordedRef.current = false
     setResults([])
     setPickedChoice(null)
     const first = steps[0]
@@ -201,10 +259,14 @@ export function ScenarioViewer({ scenarioId }: { scenarioId: string }) {
             <HomeLink />
             <span className={styles.viewerTitle}>{scenario.title}</span>
           </div>
-          <span className={styles.viewerProgress}>
-            Step {stepIndex + 1} / {steps.length}
-            {decisionCount > 0 && <> · Score {score}/{maxScore}</>}
-          </span>
+          <div className={styles.viewerHeaderRight}>
+            <span className={styles.viewerProgress}>
+              Step {stepIndex + 1} / {steps.length}
+              {decisionCount > 0 && <> · Score {score}/{maxScore}</>}
+              {best && <> · Best {best.score}/{best.maxScore}</>}
+            </span>
+            <ScenarioSaveControls scenarioId={scenarioId} variant="header" />
+          </div>
         </div>
         <div className={styles.boardWrap}>
           {currentStep && (

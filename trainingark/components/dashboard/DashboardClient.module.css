@@ -37,6 +37,162 @@
   flex-wrap: wrap;
 }
 
+/* --- tabs --------------------------------------------------------------- */
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  margin-bottom: 16px;
+}
+
+.tab {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: rgba(232, 224, 212, 0.5);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 8px 14px;
+  margin-bottom: -1px;
+  transition: color 0.12s, border-color 0.12s;
+}
+
+.tab:hover { color: #e8e0d4; }
+
+.tabActive {
+  color: #c9a84c;
+  border-bottom-color: #c9a84c;
+}
+
+/* Per-tab toolbar: count on the left, actions on the right. */
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 34px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
+.sectionCount {
+  font-size: 0.78rem;
+  color: rgba(232, 224, 212, 0.45);
+}
+
+/* --- playlists ---------------------------------------------------------- */
+
+.createForm {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  background: #13131a;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+}
+
+.visibilityRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.76rem;
+  color: rgba(232, 224, 212, 0.6);
+  cursor: pointer;
+}
+
+.createFormActions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.playlistList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.playlistRow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: #13131a;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  padding: 12px 14px;
+  text-decoration: none;
+  transition: border-color 0.12s;
+}
+
+a.playlistRow:hover { border-color: rgba(201, 168, 76, 0.4); }
+
+.playlistBody {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+}
+
+.playlistName {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #e8e0d4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.playlistDesc {
+  font-size: 0.7rem;
+  color: rgba(232, 224, 212, 0.45);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.playlistCount {
+  flex-shrink: 0;
+  font-size: 0.7rem;
+  color: rgba(232, 224, 212, 0.4);
+}
+
+/* Remove control for a bookmark whose scenario is gone — those tiles have no
+   star of their own. */
+.unsaveBtn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+  color: rgba(232, 224, 212, 0.6);
+  cursor: pointer;
+  font-size: 0.9rem;
+  line-height: 1;
+  transition: color 0.12s, border-color 0.12s;
+}
+
+.unsaveBtn:hover:not(:disabled) {
+  color: #e07070;
+  border-color: rgba(224, 112, 112, 0.5);
+}
+
+.unsaveBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+
 /* Same control treatment as the settings form inputs. */
 .filterInput {
   background: #0a0a0e;

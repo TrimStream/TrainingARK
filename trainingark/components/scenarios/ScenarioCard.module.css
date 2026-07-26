@@ -2,6 +2,14 @@
    results page render the same card from one source. The only addition is
    .cardAuthor. */
 
+/* Positioning context for the save controls, which are a sibling of the card
+   link rather than a child of it. */
+.cardWrap {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
 .card {
   display: flex;
   flex-direction: column;
@@ -101,6 +109,27 @@
 .cardAuthor {
   font-size: 0.66rem;
   color: rgba(232, 224, 212, 0.4);
+}
+
+/* Deleted-scenario tile. Same wording and muted treatment the history page
+   uses for orphaned attempt rows. */
+.cardThumbGone {
+  background: repeating-linear-gradient(
+    135deg,
+    #13131a,
+    #13131a 8px,
+    #16161e 8px,
+    #16161e 16px
+  );
+  opacity: 0.5;
+}
+
+.cardTitleGone { color: rgba(232, 224, 212, 0.45); }
+
+.cardUnavailable {
+  font-size: 0.68rem;
+  color: rgba(232, 224, 212, 0.35);
+  font-style: italic;
 }
 
 .skeleton {
