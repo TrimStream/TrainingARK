@@ -13,12 +13,28 @@ interface DashboardScenario {
   commanders: string[]
   updatedAt: string
   published: boolean
+  author?: { id: string; name: string } | null
 }
 
 const DIFFICULTY_LABELS: Record<string, string> = {
   beginner: 'Beginner',
   intermediate: 'Intermediate',
   advanced: 'Advanced',
+}
+
+/**
+ * Filters the already-loaded list in memory. This is deliberately NOT the top
+ * bar's search: it never calls the search API, so it can only ever match
+ * scenarios from this user's own `?mine=1` fetch — drafts included, and other
+ * authors' scenarios excluded no matter what is typed.
+ */
+function matchesFilter(scenario: DashboardScenario, needle: string): boolean {
+  const haystack = [
+    scenario.title,
+    scenario.author?.name ?? '',
+    ...scenario.commanders,
+  ]
+  return haystack.some(value => value.toLowerCase().includes(needle))
 }
 
 function SkeletonCard() {
@@ -40,6 +56,7 @@ export function DashboardClient() {
   const [error, setError] = useState<string | null>(null)
   // Per-row, so deleting one card doesn't disable every other card's button.
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [filter, setFilter] = useState('')
 
   useEffect(() => {
     // `mine=1` returns this user's scenarios only — drafts included, which the
@@ -81,6 +98,11 @@ export function DashboardClient() {
 
   const isEmpty = !loading && scenarios.length === 0
 
+  // Live filter, no debounce and no request — the list is already in state.
+  const needle = filter.trim().toLowerCase()
+  const visible = needle ? scenarios.filter(s => matchesFilter(s, needle)) : scenarios
+  const filteredToNothing = !loading && scenarios.length > 0 && visible.length === 0
+
   return (
     <AppShell>
       <div className={styles.page}>
@@ -88,10 +110,25 @@ export function DashboardClient() {
           <h1 className={styles.title}>
             Your scenarios{' '}
             {!loading && scenarios.length > 0 && (
-              <span className={styles.count}>({scenarios.length})</span>
+              <span className={styles.count}>
+                ({needle ? `${visible.length} of ${scenarios.length}` : scenarios.length})
+              </span>
             )}
           </h1>
-          {!isEmpty && <Link href="/builder" className={styles.newBtn}>New scenario</Link>}
+          {!isEmpty && (
+            <div className={styles.headerActions}>
+              <input
+                className={styles.filterInput}
+                type="text"
+                placeholder="Filter your scenarios..."
+                value={filter}
+                onChange={e => setFilter(e.target.value)}
+                aria-label="Filter your scenarios"
+                autoComplete="off"
+              />
+              <Link href="/builder" className={styles.newBtn}>New scenario</Link>
+            </div>
+          )}
         </div>
 
         {error && <p className={styles.stateTextError}>{error}</p>}
@@ -104,11 +141,15 @@ export function DashboardClient() {
             </p>
             <Link href="/builder" className={styles.emptyBtn}>Create scenario</Link>
           </div>
+        ) : filteredToNothing ? (
+          <p className={styles.noMatches}>
+            No scenarios match &ldquo;{filter.trim()}&rdquo;.
+          </p>
         ) : (
           <div className={styles.grid}>
             {loading
               ? Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)
-              : scenarios.map(s => (
+              : visible.map(s => (
                 <div key={s.id} className={styles.card}>
                   <div className={styles.cardThumb}>
                     <span className={`${styles.difficultyBadge} ${styles[`badge_${s.difficulty}`]}`}>

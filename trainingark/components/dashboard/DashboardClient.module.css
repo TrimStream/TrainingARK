@@ -30,6 +30,37 @@
   color: rgba(232, 224, 212, 0.45);
 }
 
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Same control treatment as the settings form inputs. */
+.filterInput {
+  background: #0a0a0e;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 5px;
+  color: #e8e0d4;
+  font-size: 0.8rem;
+  padding: 7px 11px;
+  outline: none;
+  width: 220px;
+  max-width: 100%;
+  transition: border-color 0.12s;
+}
+
+.filterInput:focus { border-color: #c9a84c; }
+.filterInput::placeholder { color: rgba(232, 224, 212, 0.28); }
+
+.noMatches {
+  font-size: 0.82rem;
+  color: rgba(232, 224, 212, 0.5);
+  padding: 32px 0;
+  margin: 0;
+}
+
 .newBtn {
   background: #8b6914;
   border-radius: 6px;

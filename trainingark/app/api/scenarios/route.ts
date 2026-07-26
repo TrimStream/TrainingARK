@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
+import {
+  SCENARIO_CARD_SELECT,
+  ownScenarioWhere,
+  visibleScenarioWhere,
+  withScenarioAuthor,
+} from '@/lib/scenarioVisibility'
 
 const MAX_PAYLOAD_BYTES = 8_000_000
 const MAX_COMMANDERS = 8
@@ -62,30 +68,18 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Not signed in' }, { status: 401 })
     }
 
-    // Everyone sees published scenarios; you additionally see your own drafts.
-    // Another author's drafts are never returned.
-    const where = mineOnly
-      ? { authorId: userId }
-      : userId
-        ? { OR: [{ published: true }, { authorId: userId }] }
-        : { published: true }
+    // Visibility rules live in lib/scenarioVisibility.ts so the search
+    // endpoint applies the same definitions rather than its own copy.
+    const where = mineOnly && userId
+      ? ownScenarioWhere(userId)
+      : visibleScenarioWhere(userId)
 
     const scenarios = await prisma.scenario.findMany({
       where,
-      select: {
-        id: true,
-        title: true,
-        description: true,
-        difficulty: true,
-        commanders: true,
-        createdAt: true,
-        updatedAt: true,
-        published: true,
-        authorId: true,
-      },
+      select: SCENARIO_CARD_SELECT,
       orderBy: { updatedAt: 'desc' },
     })
-    return NextResponse.json(scenarios)
+    return NextResponse.json(scenarios.map(withScenarioAuthor))
   } catch (err) {
     console.error('Failed to list scenarios:', err)
     return NextResponse.json({ error: 'Failed to list scenarios' }, { status: 500 })

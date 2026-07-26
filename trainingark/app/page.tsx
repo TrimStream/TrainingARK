@@ -3,18 +3,9 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { AppShell } from '@/components/shell/AppShell'
+import { ScenarioCard, ScenarioCardSkeleton, type ScenarioCardData } from '@/components/scenarios/ScenarioCard'
 import styles from './page.module.css'
 
-
-interface ScenarioCard {
-  id: string
-  title: string
-  description: string
-  difficulty: string
-  commanders: string[]
-  updatedAt: string
-  published: boolean
-}
 
 const DIFFICULTY_ORDER = ['beginner', 'intermediate', 'advanced'] as const
 const DIFFICULTY_LABELS: Record<string, string> = {
@@ -23,55 +14,15 @@ const DIFFICULTY_LABELS: Record<string, string> = {
   advanced: 'Advanced',
 }
 
-function Card({ s }: { s: ScenarioCard }) {
-  return (
-    <Link href={`/scenario/${s.id}`} className={styles.card}>
-      <div className={styles.cardThumb}>
-        <span className={`${styles.difficultyBadge} ${styles[`badge_${s.difficulty}`]}`}>
-          {DIFFICULTY_LABELS[s.difficulty] ?? s.difficulty}
-        </span>
-        {!s.published && <span className={styles.draftBadge}>Draft</span>}
-      </div>
-      <div className={styles.cardBody}>
-        <span className={styles.cardTitle}>{s.title}</span>
-        {s.description && <p className={styles.cardDesc}>{s.description}</p>}
-        {s.commanders.length > 0 && (
-          <div className={styles.cardCommanders}>
-            {s.commanders.slice(0, 3).map((name, i) => (
-              <span key={i} className={styles.commanderChip}>{name}</span>
-            ))}
-            {s.commanders.length > 3 && (
-              <span className={styles.commanderMore}>+{s.commanders.length - 3}</span>
-            )}
-          </div>
-        )}
-      </div>
-    </Link>
-  )
-}
-
-function SkeletonCard() {
-  return (
-    <div className={styles.card}>
-      <div className={`${styles.cardThumb} ${styles.skeleton}`} />
-      <div className={styles.cardBody}>
-        <div className={`${styles.skeletonLine} ${styles.skeleton}`} style={{ width: '70%' }} />
-        <div className={`${styles.skeletonLine} ${styles.skeleton}`} style={{ width: '90%' }} />
-        <div className={`${styles.skeletonLine} ${styles.skeleton}`} style={{ width: '50%' }} />
-      </div>
-    </div>
-  )
-}
-
-function Row({ title, scenarios, loading }: { title: string; scenarios: ScenarioCard[]; loading: boolean }) {
+function Row({ title, scenarios, loading }: { title: string; scenarios: ScenarioCardData[]; loading: boolean }) {
   if (!loading && scenarios.length === 0) return null
   return (
     <section className={styles.row}>
       <h2 className={styles.rowTitle}>{title}</h2>
       <div className={styles.rowGrid}>
         {loading
-          ? Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)
-          : scenarios.map(s => <Card key={s.id} s={s} />)
+          ? Array.from({ length: 4 }).map((_, i) => <ScenarioCardSkeleton key={i} />)
+          : scenarios.map(s => <ScenarioCard key={s.id} s={s} />)
         }
       </div>
     </section>
@@ -79,7 +30,7 @@ function Row({ title, scenarios, loading }: { title: string; scenarios: Scenario
 }
 
 export default function HomePage() {
-  const [scenarios, setScenarios] = useState<ScenarioCard[]>([])
+  const [scenarios, setScenarios] = useState<ScenarioCardData[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
 
