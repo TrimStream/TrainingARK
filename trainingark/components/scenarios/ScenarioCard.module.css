@@ -1,0 +1,120 @@
+/* Extracted verbatim from app/page.module.css so the home feed and the search
+   results page render the same card from one source. The only addition is
+   .cardAuthor. */
+
+.card {
+  display: flex;
+  flex-direction: column;
+  border-radius: 10px;
+  text-decoration: none;
+  overflow: hidden;
+  transition: transform 0.12s;
+}
+
+.card:hover { transform: translateY(-2px); }
+
+.cardThumb {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  background: linear-gradient(135deg, #1a1a24, #13131a);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 10px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 10px;
+}
+
+.difficultyBadge {
+  font-size: 0.56rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  border-radius: 3px;
+}
+
+.badge_beginner { background: rgba(106, 176, 106, 0.2); color: #6ab06a; }
+.badge_intermediate { background: rgba(201, 168, 76, 0.2); color: #c9a84c; }
+.badge_advanced { background: rgba(224, 112, 112, 0.2); color: #e07070; }
+
+.draftBadge {
+  font-size: 0.56rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.5);
+  color: rgba(232, 224, 212, 0.6);
+}
+
+.cardBody {
+  padding: 10px 4px 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cardTitle {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #e8e0d4;
+  line-height: 1.3;
+}
+
+.cardDesc {
+  font-size: 0.7rem;
+  color: rgba(232, 224, 212, 0.5);
+  line-height: 1.45;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.cardCommanders {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+}
+
+.commanderChip {
+  background: rgba(201, 168, 76, 0.1);
+  border: 1px solid rgba(201, 168, 76, 0.3);
+  border-radius: 10px;
+  color: #c9a84c;
+  font-size: 0.58rem;
+  padding: 1px 8px;
+}
+
+.commanderMore {
+  font-size: 0.58rem;
+  color: rgba(232, 224, 212, 0.4);
+}
+
+/* Plain text today. There is no /author/<id> page yet — when there is, this
+   span becomes a Link and nothing else has to change, because the author id
+   is already carried in the data. */
+.cardAuthor {
+  font-size: 0.66rem;
+  color: rgba(232, 224, 212, 0.4);
+}
+
+.skeleton {
+  background: linear-gradient(90deg, #13131a 25%, #1a1a24 50%, #13131a 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.skeletonLine {
+  height: 10px;
+  border-radius: 4px;
+}

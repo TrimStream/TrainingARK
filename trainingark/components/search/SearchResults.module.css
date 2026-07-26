@@ -1,0 +1,75 @@
+/* Page container and grid match the home feed (app/page.module.css) so
+   results sit on the same rhythm as the cards they reuse. */
+
+.page {
+  padding: 20px 24px 48px;
+  max-width: 1400px;
+}
+
+.header {
+  margin-bottom: 18px;
+}
+
+.title {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #e8e0d4;
+  margin: 0;
+  line-height: 1.25;
+}
+
+.queryText {
+  color: #c9a84c;
+}
+
+.count {
+  font-size: 0.78rem;
+  color: rgba(232, 224, 212, 0.45);
+  margin: 8px 0 0;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.stateTextError {
+  font-size: 0.82rem;
+  color: #e07070;
+  padding: 24px 0;
+}
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 40px 0;
+}
+
+.emptyTitle {
+  font-size: 1.1rem;
+  color: #e8e0d4;
+  margin: 0;
+}
+
+.emptyText {
+  font-size: 0.82rem;
+  color: rgba(232, 224, 212, 0.5);
+  margin: 0;
+}
+
+.emptyBtn {
+  background: #8b6914;
+  border-radius: 6px;
+  color: #f5edda;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 8px 16px;
+  text-decoration: none;
+  margin-top: 6px;
+  transition: background 0.15s;
+}
+
+.emptyBtn:hover { background: #c9a84c; }
