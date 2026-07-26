@@ -92,7 +92,7 @@ export function PlayerZone({ playerIndex, position, revealAll, viewMode, playerO
     players, updatePlayer, confirmSetup, setupComplete,
     moveCard, moveAllCards, addCard, castToStack, setLife, setTax, setTaxPartner,
     decklists, drawCard, shuffleLibrary, removeCard, createTokenCopy,
-    incrementToken, decrementToken, toggleTapped,
+    incrementToken, decrementToken, toggleTapped, toggleRevealed,
     handSizes, setHandSize,
     isDuplicate, dismissDuplicateWarning, dismissedDuplicateWarnings,
     populateLibrary,
@@ -187,6 +187,14 @@ export function PlayerZone({ playerIndex, position, revealAll, viewMode, playerO
   function handleTokenCopy(cardId: string) {
     if (viewMode) return
     createTokenCopy(playerIndex, cardId)
+  }
+
+  // Per-card reveal is an opponent-seat authoring tool. Returning undefined for
+  // the player's own seat (and in the viewer) is what keeps the context-menu
+  // item and the R shortcut off those cards.
+  function revealHandler(cardId: string): (() => void) | undefined {
+    if (viewMode || isPlayerSeat) return undefined
+    return () => toggleRevealed(playerIndex, cardId)
   }
 
   function handleAddCard(zone: EditableZone, rect: DOMRect, tokensOnly?: boolean) {
@@ -334,7 +342,14 @@ export function PlayerZone({ playerIndex, position, revealAll, viewMode, playerO
   const handCards = p.zones.hand.cards
 
   function renderHand() {
-    const count = handRevealed && handCards.length > 0 ? handCards.length : handCount
+    const showAllFaces = handRevealed && handCards.length > 0
+    // A hidden hand can still contain individually revealed cards. Those are
+    // drawn face-up at the front of the fan and the rest of the slots stay
+    // card backs, so the hand keeps its real size either way.
+    const revealedCards = showAllFaces ? [] : handCards.filter((c: Card) => c.revealed)
+    const count = showAllFaces
+      ? handCards.length
+      : Math.max(handCount, revealedCards.length)
     const maxOverlap = cardW * 0.45
     const dynamicOverlap = count <= 1
       ? 0
@@ -346,7 +361,7 @@ export function PlayerZone({ playerIndex, position, revealAll, viewMode, playerO
         className={styles.handFan}
         onClick={() => { if (!viewMode || handRevealed) toggle('hand') }}
       >
-        {handRevealed && handCards.length > 0
+        {showAllFaces
           ? handCards.map((card: Card, i: number) => (
               <div key={card.id} className={styles.fanCard} style={{ left: i * dynamicOverlap }} onClick={e => { if (!viewMode) e.stopPropagation() }}>
                 <BoardCard
@@ -354,17 +369,37 @@ export function PlayerZone({ playerIndex, position, revealAll, viewMode, playerO
                   onMove={t => handleMove(card.id, t)}
                   onCastToStack={t => handleCastToStack(card.id, t)}
                   onRemove={() => handleRemove(card.id)}
+                  onToggleRevealed={revealHandler(card.id)}
                   showRemoveX
                   currentZone="hand"
                   readOnly={viewMode}
                 />
               </div>
             ))
-          : Array.from({ length: count }).map((_, i: number) => (
-              <div key={i} className={styles.fanCard} style={{ left: i * dynamicOverlap }}>
-                <Image src={CARD_BACK} alt="Card back" width={80} height={112} style={{ borderRadius: 4, display: 'block', width: 'var(--card-w)', height: 'var(--card-h)' }} />
-              </div>
-            ))
+          : Array.from({ length: count }).map((_, i: number) => {
+              const card = revealedCards[i]
+              if (!card) {
+                return (
+                  <div key={`back-${i}`} className={styles.fanCard} style={{ left: i * dynamicOverlap }}>
+                    <Image src={CARD_BACK} alt="Card back" width={80} height={112} style={{ borderRadius: 4, display: 'block', width: 'var(--card-w)', height: 'var(--card-h)' }} />
+                  </div>
+                )
+              }
+              return (
+                <div key={card.id} className={styles.fanCard} style={{ left: i * dynamicOverlap }} onClick={e => { if (!viewMode) e.stopPropagation() }}>
+                  <BoardCard
+                    card={card}
+                    onMove={t => handleMove(card.id, t)}
+                    onCastToStack={t => handleCastToStack(card.id, t)}
+                    onRemove={() => handleRemove(card.id)}
+                    onToggleRevealed={revealHandler(card.id)}
+                    showRemoveX
+                    currentZone="hand"
+                    readOnly={viewMode}
+                  />
+                </div>
+              )
+            })
         }
       </div>
     )
@@ -389,6 +424,7 @@ export function PlayerZone({ playerIndex, position, revealAll, viewMode, playerO
           onMove={t => handleMove(topCard.id, t)}
           onCastToStack={t => handleCastToStack(topCard.id, t)}
           onRemove={() => handleRemove(topCard.id)}
+          onToggleRevealed={revealHandler(topCard.id)}
           showRemoveX
           currentZone={zone}
           readOnly={viewMode}
@@ -410,6 +446,7 @@ export function PlayerZone({ playerIndex, position, revealAll, viewMode, playerO
               card={card}
               onMove={t => handleMove(card.id, t)}
               onCastToStack={t => handleCastToStack(card.id, t)}
+              onToggleRevealed={revealHandler(card.id)}
               currentZone="command"
               readOnly={viewMode}
             />
@@ -735,6 +772,7 @@ export function PlayerZone({ playerIndex, position, revealAll, viewMode, playerO
           onRemove={() => handleRemove(card.id)}
           onCreateTokenCopy={() => handleTokenCopy(card.id)}
           onToggleTapped={() => { if (!viewMode) toggleTapped(playerIndex, card.id) }}
+          onToggleRevealed={revealHandler(card.id)}
           onIncrement={!viewMode && card.isToken ? () => incrementToken(playerIndex, card.id) : undefined}
           onDecrement={!viewMode && card.isToken ? () => decrementToken(playerIndex, card.id) : undefined}
           showRemoveX

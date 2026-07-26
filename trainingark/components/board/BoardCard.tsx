@@ -15,6 +15,9 @@ interface BoardCardProps {
   onRemove?: () => void
   onCreateTokenCopy?: () => void
   onToggleTapped?: () => void
+  // Only passed for opponent seats; its absence is what hides the reveal
+  // toggle on the player's own cards.
+  onToggleRevealed?: () => void
   onIncrement?: () => void
   onDecrement?: () => void
   currentZone: EditableZone
@@ -29,7 +32,7 @@ const CARD_BACK = '/back_magic.png'
 
 export function BoardCard({
   card, onMove, onCastToStack, onRemove, onCreateTokenCopy,
-  onToggleTapped,
+  onToggleTapped, onToggleRevealed,
   onIncrement, onDecrement,
   currentZone, compact, showRemoveX, readOnly,
 }: BoardCardProps) {
@@ -71,11 +74,13 @@ export function BoardCard({
         case 'e': if (currentZone !== 'exile') onMove?.('exile'); break
         case 'l': if (currentZone !== 'library') onMove?.('library-top'); break
         case 't': if (currentZone === 'battlefield') onToggleTapped?.(); break
+        // Opponent-only: onToggleRevealed is undefined on the player's own cards.
+        case 'r': onToggleRevealed?.(); break
       }
     }
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
-  }, [hovered, onMove, onToggleTapped, currentZone, compact, readOnly])
+  }, [hovered, onMove, onToggleTapped, onToggleRevealed, currentZone, compact, readOnly])
 
   const contextMenuEl = !readOnly && contextMenu && (
     <CardContextMenu
@@ -86,9 +91,11 @@ export function BoardCard({
       isToken={card.isToken}
       isCommander={card.isCommander}
       isTapped={card.tapped}
+      isRevealed={card.revealed}
       onMove={t => onMove?.(t)}
       onCastToStack={t => onCastToStack?.(t)}
       onToggleTapped={onToggleTapped}
+      onToggleRevealed={onToggleRevealed}
       onRemove={() => onRemove?.()}
       onCreateTokenCopy={onCreateTokenCopy}
       onClose={() => setContextMenu(null)}
@@ -145,6 +152,13 @@ export function BoardCard({
 
         {isToken && stackCount > 1 && (
           <div className={styles.stackBadge}>×{stackCount}</div>
+        )}
+
+        {/* Authoring-only marker: every hand is face-up in the builder, so this
+            is the only way to see that a card is flagged for the viewer. Hidden
+            while hovered so it never sits under the ⋮ / × buttons. */}
+        {!readOnly && card.revealed && !hovered && (
+          <div className={styles.revealBadge} title="Revealed to viewer">◉</div>
         )}
 
         {!readOnly && hovered && isToken && (onIncrement || onDecrement) && (

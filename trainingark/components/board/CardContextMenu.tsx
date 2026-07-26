@@ -25,9 +25,13 @@ interface CardContextMenuProps {
   isToken?: boolean
   isCommander?: boolean
   isTapped?: boolean
+  isRevealed?: boolean
   onMove: (target: ZoneTarget) => void
   onCastToStack: (type: StackType) => void
   onToggleTapped?: () => void
+  // Only supplied for opponent seats — the player's own cards are always
+  // visible to the viewer, so there is nothing to reveal.
+  onToggleRevealed?: () => void
   onRemove: () => void
   onCreateTokenCopy?: () => void
   onClose: () => void
@@ -35,8 +39,8 @@ interface CardContextMenuProps {
 }
 
 export function CardContextMenu({
-  x, y, cardName, cardType, isToken, isCommander, isTapped,
-  onMove, onCastToStack, onToggleTapped, onRemove, onCreateTokenCopy, onClose, currentZone,
+  x, y, cardName, cardType, isToken, isCommander, isTapped, isRevealed,
+  onMove, onCastToStack, onToggleTapped, onToggleRevealed, onRemove, onCreateTokenCopy, onClose, currentZone,
 }: CardContextMenuProps) {
   const ref = useRef<HTMLDivElement>(null)
 
@@ -72,6 +76,15 @@ export function CardContextMenu({
         <>
           <button className={styles.menuItem} onClick={() => { onToggleTapped(); onClose() }}>
             {isTapped ? 'Untap' : 'Tap'} <span className={styles.kbd}>T</span>
+          </button>
+          <div className={styles.menuDivider} />
+        </>
+      )}
+
+      {onToggleRevealed && (
+        <>
+          <button className={styles.menuItem} onClick={() => { onToggleRevealed(); onClose() }}>
+            {isRevealed ? 'Hide from Viewer' : 'Reveal to Viewer'} <span className={styles.kbd}>R</span>
           </button>
           <div className={styles.menuDivider} />
         </>

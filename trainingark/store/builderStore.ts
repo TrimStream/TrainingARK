@@ -60,6 +60,7 @@ interface BuilderState {
   setTaxPartner: (playerIndex: number, partnerIndex: 0 | 1, value: number) => void
   startScenario: () => void
   toggleTapped: (playerIndex: number, cardId: string) => void
+  toggleRevealed: (playerIndex: number, cardId: string) => void
   drawCard: (playerIndex: number) => void
   shuffleLibrary: (playerIndex: number) => void
   populateLibrary: (playerIndex: number, cards: Card[]) => void
@@ -413,6 +414,42 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
     const updated = [...state.players] as [Player, Player, Player, Player]
     updated[playerIndex] = { ...player, zones: updatedZones }
     const logLine = `${player.name}'s ${cardName} is ${nowTapped ? 'tapped' : 'untapped'}.`
+    set({
+      players: updated,
+      logLines: state.scenarioStarted ? [...state.logLines, logLine] : state.logLines,
+    })
+  },
+
+  toggleRevealed: (playerIndex, cardId) => {
+    const state = get()
+    if (!state.players) return
+    // Reveal only means something for opponent seats — the player's own cards
+    // are already fully visible to them in the viewer. Guard before
+    // pushHistory so a no-op call cannot add an undo entry.
+    if (playerIndex === 0) return
+    pushHistory(state)
+    const player = state.players[playerIndex]
+    let found = false
+    let cardName = ''
+    let nowRevealed = false
+    const updatedZones = { ...player.zones }
+    for (const zoneName in updatedZones) {
+      const zone = updatedZones[zoneName as EditableZone]
+      const cardIndex = zone.cards.findIndex((c: Card) => c.id === cardId)
+      if (cardIndex !== -1) {
+        const updatedCards = [...zone.cards]
+        nowRevealed = !updatedCards[cardIndex].revealed
+        cardName = updatedCards[cardIndex].name
+        updatedCards[cardIndex] = { ...updatedCards[cardIndex], revealed: nowRevealed }
+        updatedZones[zoneName as EditableZone] = { ...zone, cards: updatedCards }
+        found = true
+        break
+      }
+    }
+    if (!found) return
+    const updated = [...state.players] as [Player, Player, Player, Player]
+    updated[playerIndex] = { ...player, zones: updatedZones }
+    const logLine = `${player.name}'s ${cardName} is ${nowRevealed ? 'revealed' : 'hidden'}.`
     set({
       players: updated,
       logLines: state.scenarioStarted ? [...state.logLines, logLine] : state.logLines,

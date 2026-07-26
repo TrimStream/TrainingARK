@@ -19,6 +19,9 @@ export interface Card {
   isToken?: boolean
   isCommander?: boolean
   stackCount?: number
+  // Author-controlled per-card reveal. An opponent card marked revealed shows
+  // its face in the viewer even inside a zone that is otherwise hidden.
+  revealed?: boolean
 }
 
 export interface Zone {
