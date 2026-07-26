@@ -32,7 +32,7 @@ export default function AboutPage() {
       <section className={styles.section}>
         <h2 className={styles.heading}>How to use it</h2>
         <p className={styles.body}>
-          Browse scenarios on the home page, filtered by difficulty. Each scenario shows a
+          Browse scenarios on the home page, filtered by your favorite author or commanders. Each scenario shows a
           full board state with real card images. Hover any card to preview it. Read the
           position, make your decision, and see how you did.
         </p>
