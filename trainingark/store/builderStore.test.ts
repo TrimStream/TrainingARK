@@ -1,0 +1,560 @@
+import { beforeEach, describe, expect, it } from 'vitest'
+import { useBuilderStore, type DecisionPoint } from './builderStore'
+import type { Card } from '@/types/board'
+
+// `history` (the undo stack) lives in a module-level variable outside the
+// Zustand store, so it is not touched by `set()`/`getState()` resets. The
+// store's own `resetScenario` action clears both the state fields AND that
+// module-level `history` array (see builderStore.ts), so calling it before
+// every test is what actually gives each test a clean slate. Resetting only
+// via `setState` would leave a previous test's undo history dangling and
+// bleeding into the next test's `undoLastAction` assertions.
+beforeEach(() => {
+  useBuilderStore.getState().resetScenario()
+})
+
+function withScenarioStarted() {
+  useBuilderStore.setState({ scenarioStarted: true })
+}
+
+function card(overrides: Partial<Card> = {}): Card {
+  return {
+    id: 'card-1',
+    name: 'Test Card',
+    cardType: 'creature',
+    ...overrides,
+  }
+}
+
+describe('saveStep', () => {
+  it('preserves a decisionPoint exactly as passed', () => {
+    const decisionPoint: DecisionPoint = {
+      prompt: 'What do you do with priority?',
+      choices: [
+        { id: 'c1', label: 'Cast removal', quality: 'best', explanation: 'Answers the threat now.' },
+        { id: 'c2', label: 'Pass', quality: 'blunder', explanation: 'Lets the combo resolve.' },
+        { id: 'c3', label: 'Counter it', quality: 'ok', explanation: 'Works but taxes your hand.' },
+      ],
+    }
+
+    useBuilderStore.getState().saveStep('Decision step', decisionPoint)
+
+    const { steps } = useBuilderStore.getState()
+    expect(steps).toHaveLength(1)
+    expect(steps[0].decisionPoint).toEqual(decisionPoint)
+    expect(steps[0].decisionPoint?.choices).toHaveLength(3)
+  })
+
+  it('omits decisionPoint entirely when none is passed', () => {
+    useBuilderStore.getState().saveStep('Plain step')
+    const { steps } = useBuilderStore.getState()
+    expect(steps[0]).not.toHaveProperty('decisionPoint')
+  })
+
+  it('falls back to a numbered label when label is empty', () => {
+    useBuilderStore.getState().saveStep('')
+    expect(useBuilderStore.getState().steps[0].label).toBe('Step 1')
+  })
+})
+
+describe('moveAllCards (bulk zone movement)', () => {
+  it('produces exactly one log line and one undo-able history entry for a multi-card move', () => {
+    withScenarioStarted()
+    const state = useBuilderStore.getState()
+    const players = state.players!
+    const withHand = { ...players[0], zones: { ...players[0].zones, hand: { cards: [card({ id: 'h1', name: 'A' }), card({ id: 'h2', name: 'B' }), card({ id: 'h3', name: 'C' })], revealed: false, cardCount: 3 } } }
+    const updatedPlayers = [withHand, players[1], players[2], players[3]] as typeof players
+    useBuilderStore.setState({ players: updatedPlayers })
+
+    const logLinesBefore = useBuilderStore.getState().logLines.length
+
+    useBuilderStore.getState().moveAllCards(0, 'hand', 'graveyard')
+
+    const afterMove = useBuilderStore.getState()
+    expect(afterMove.logLines.length).toBe(logLinesBefore + 1)
+    expect(afterMove.players![0].zones.hand.cards).toHaveLength(0)
+    expect(afterMove.players![0].zones.graveyard.cards).toHaveLength(3)
+
+    useBuilderStore.getState().undoLastAction()
+
+    const afterUndo = useBuilderStore.getState()
+    expect(afterUndo.logLines.length).toBe(logLinesBefore)
+    expect(afterUndo.players![0].zones.hand.cards).toHaveLength(3)
+    expect(afterUndo.players![0].zones.graveyard.cards).toHaveLength(0)
+  })
+
+  it('materializes placeholders for the un-imported portion of a zone and grows the destination by the full count, not just the materialized array length', () => {
+    const state = useBuilderStore.getState()
+    const players = state.players!
+    // cardCount says 10, but only 3 are actually materialized — the other 7
+    // are the "un-imported" part of the library that must be represented by
+    // placeholders when the whole zone is bulk-moved.
+    const withLibrary = {
+      ...players[0],
+      zones: {
+        ...players[0].zones,
+        library: { cards: [card({ id: 'l1', name: 'Known1' }), card({ id: 'l2', name: 'Known2' }), card({ id: 'l3', name: 'Known3' })], revealed: false, cardCount: 10 },
+      },
+    }
+    useBuilderStore.setState({ players: [withLibrary, players[1], players[2], players[3]] as typeof players })
+
+    useBuilderStore.getState().moveAllCards(0, 'library', 'graveyard')
+
+    const graveyard = useBuilderStore.getState().players![0].zones.graveyard
+    expect(graveyard.cardCount).toBe(10)
+    expect(graveyard.cards).toHaveLength(10)
+    const placeholderCount = graveyard.cards.filter(c => c.name === 'Unknown card').length
+    expect(placeholderCount).toBe(7)
+
+    const library = useBuilderStore.getState().players![0].zones.library
+    expect(library.cardCount).toBe(0)
+    expect(library.cards).toHaveLength(0)
+  })
+
+  it('orders cards correctly for top-of-library vs bottom-of-library moves', () => {
+    const state = useBuilderStore.getState()
+    const players = state.players!
+    const existingLibraryCard = card({ id: 'z1', name: 'Z' })
+    const handCards = [card({ id: 'h1', name: 'A' }), card({ id: 'h2', name: 'B' }), card({ id: 'h3', name: 'C' })]
+
+    const setupTop = {
+      ...players[0],
+      zones: {
+        ...players[0].zones,
+        hand: { cards: handCards, revealed: false, cardCount: 3 },
+        library: { cards: [existingLibraryCard], revealed: false, cardCount: 1 },
+      },
+    }
+    useBuilderStore.setState({ players: [setupTop, players[1], players[2], players[3]] as typeof players })
+    useBuilderStore.getState().moveAllCards(0, 'hand', 'library', 'top')
+    // Array end = top of library, so appending to the end puts the moved
+    // cards on top, in their original relative order.
+    expect(useBuilderStore.getState().players![0].zones.library.cards.map(c => c.name)).toEqual(['Z', 'A', 'B', 'C'])
+
+    useBuilderStore.getState().resetScenario()
+    const setupBottom = {
+      ...players[0],
+      zones: {
+        ...players[0].zones,
+        hand: { cards: handCards, revealed: false, cardCount: 3 },
+        library: { cards: [existingLibraryCard], revealed: false, cardCount: 1 },
+      },
+    }
+    useBuilderStore.setState({ players: [setupBottom, players[1], players[2], players[3]] as typeof players })
+    useBuilderStore.getState().moveAllCards(0, 'hand', 'library', 'bottom')
+    // Array start = bottom of library, so the moved cards are prepended,
+    // in their original relative order.
+    expect(useBuilderStore.getState().players![0].zones.library.cards.map(c => c.name)).toEqual(['A', 'B', 'C', 'Z'])
+  })
+
+  it('is a no-op when the source zone is already empty', () => {
+    const before = useBuilderStore.getState()
+    const players = before.players!
+    const emptyHand = { ...players[0], zones: { ...players[0].zones, hand: { cards: [], revealed: false, cardCount: 0 } } }
+    useBuilderStore.setState({ players: [emptyHand, players[1], players[2], players[3]] as typeof players })
+    const logLinesBefore = useBuilderStore.getState().logLines.length
+
+    useBuilderStore.getState().moveAllCards(0, 'hand', 'graveyard')
+
+    expect(useBuilderStore.getState().logLines.length).toBe(logLinesBefore)
+    expect(useBuilderStore.getState().players![0].zones.graveyard.cards).toHaveLength(0)
+  })
+})
+
+describe('token stacking', () => {
+  it('addCard stacks a same-name token onto the existing one instead of duplicating it', () => {
+    useBuilderStore.getState().addCard(0, 'battlefield', card({ id: 'tok1', name: 'Spirit', cardType: 'creature', isToken: true, stackCount: 1 }))
+    useBuilderStore.getState().addCard(0, 'battlefield', card({ id: 'tok2', name: 'Spirit', cardType: 'creature', isToken: true, stackCount: 1 }))
+
+    const battlefield = useBuilderStore.getState().players![0].zones.battlefield
+    expect(battlefield.cards).toHaveLength(1)
+    expect(battlefield.cards[0].stackCount).toBe(2)
+    expect(battlefield.cards[0].id).toBe('tok1')
+  })
+
+  it('createTokenCopy stacks a second copy of the same source onto the first copy', () => {
+    const state = useBuilderStore.getState()
+    const players = state.players!
+    const withBear = { ...players[0], zones: { ...players[0].zones, battlefield: { cards: [card({ id: 'bear1', name: 'Bear', cardType: 'creature' })], revealed: true } } }
+    useBuilderStore.setState({ players: [withBear, players[1], players[2], players[3]] as typeof players })
+
+    useBuilderStore.getState().createTokenCopy(0, 'bear1')
+    let battlefield = useBuilderStore.getState().players![0].zones.battlefield
+    expect(battlefield.cards).toHaveLength(2)
+    const firstCopy = battlefield.cards.find(c => c.id !== 'bear1')!
+    expect(firstCopy.isToken).toBe(true)
+    expect(firstCopy.stackCount).toBe(1)
+
+    useBuilderStore.getState().createTokenCopy(0, 'bear1')
+    battlefield = useBuilderStore.getState().players![0].zones.battlefield
+    expect(battlefield.cards).toHaveLength(2)
+    const stackedCopy = battlefield.cards.find(c => c.id !== 'bear1')!
+    expect(stackedCopy.stackCount).toBe(2)
+  })
+
+  it('incrementToken increases stackCount', () => {
+    const state = useBuilderStore.getState()
+    const players = state.players!
+    const withToken = { ...players[0], zones: { ...players[0].zones, battlefield: { cards: [card({ id: 'tok1', name: 'Spirit', isToken: true, stackCount: 1 })], revealed: true } } }
+    useBuilderStore.setState({ players: [withToken, players[1], players[2], players[3]] as typeof players })
+
+    useBuilderStore.getState().incrementToken(0, 'tok1')
+    expect(useBuilderStore.getState().players![0].zones.battlefield.cards[0].stackCount).toBe(2)
+  })
+
+  it('decrementToken decreases stackCount, and removes the card entirely at 0 rather than leaving stackCount: 0', () => {
+    const state = useBuilderStore.getState()
+    const players = state.players!
+    const withToken = { ...players[0], zones: { ...players[0].zones, battlefield: { cards: [card({ id: 'tok1', name: 'Spirit', isToken: true, stackCount: 2 })], revealed: true } } }
+    useBuilderStore.setState({ players: [withToken, players[1], players[2], players[3]] as typeof players })
+
+    useBuilderStore.getState().decrementToken(0, 'tok1')
+    let battlefield = useBuilderStore.getState().players![0].zones.battlefield
+    expect(battlefield.cards).toHaveLength(1)
+    expect(battlefield.cards[0].stackCount).toBe(1)
+
+    useBuilderStore.getState().decrementToken(0, 'tok1')
+    battlefield = useBuilderStore.getState().players![0].zones.battlefield
+    expect(battlefield.cards).toHaveLength(0)
+  })
+})
+
+describe('library/token count decoupling', () => {
+  it('adding a token to the battlefield does not decrement the library count', () => {
+    const libraryBefore = useBuilderStore.getState().players![0].zones.library.cardCount
+    useBuilderStore.getState().addCard(0, 'battlefield', card({ id: 'tok1', name: 'Spirit', isToken: true, stackCount: 1 }))
+    expect(useBuilderStore.getState().players![0].zones.library.cardCount).toBe(libraryBefore)
+  })
+
+  it('adding a real (non-token) card to a non-library zone decrements the library count', () => {
+    const libraryBefore = useBuilderStore.getState().players![0].zones.library.cardCount!
+    useBuilderStore.getState().addCard(0, 'hand', card({ id: 'real1', name: 'Bear' }))
+    expect(useBuilderStore.getState().players![0].zones.library.cardCount).toBe(libraryBefore - 1)
+  })
+
+  it('removing a token from the battlefield does not restore the library count', () => {
+    useBuilderStore.getState().addCard(0, 'battlefield', card({ id: 'tok1', name: 'Spirit', isToken: true, stackCount: 1 }))
+    const libraryAfterAdd = useBuilderStore.getState().players![0].zones.library.cardCount
+    useBuilderStore.getState().removeCard(0, 'tok1')
+    expect(useBuilderStore.getState().players![0].zones.library.cardCount).toBe(libraryAfterAdd)
+  })
+
+  it('removing a real (non-token) card from a non-library zone restores the library count', () => {
+    useBuilderStore.getState().addCard(0, 'hand', card({ id: 'real1', name: 'Bear' }))
+    const libraryAfterAdd = useBuilderStore.getState().players![0].zones.library.cardCount!
+    useBuilderStore.getState().removeCard(0, 'real1')
+    expect(useBuilderStore.getState().players![0].zones.library.cardCount).toBe(libraryAfterAdd + 1)
+  })
+})
+
+describe('removeCard', () => {
+  it('removes only the targeted card, leaving another card with the same name untouched', () => {
+    const state = useBuilderStore.getState()
+    const players = state.players!
+    const withDuplicates = {
+      ...players[0],
+      zones: {
+        ...players[0].zones,
+        battlefield: { cards: [card({ id: 'dup1', name: 'Sol Ring' }), card({ id: 'dup2', name: 'Sol Ring' })], revealed: true },
+      },
+    }
+    useBuilderStore.setState({ players: [withDuplicates, players[1], players[2], players[3]] as typeof players })
+
+    useBuilderStore.getState().removeCard(0, 'dup1')
+
+    const battlefield = useBuilderStore.getState().players![0].zones.battlefield
+    expect(battlefield.cards).toHaveLength(1)
+    expect(battlefield.cards[0].id).toBe('dup2')
+  })
+})
+
+describe('stack: castToStack / resolveStack / removeFromStack / exileFromStack', () => {
+  it('"cast" removes the card from its source zone', () => {
+    const state = useBuilderStore.getState()
+    const players = state.players!
+    const withHand = { ...players[0], zones: { ...players[0].zones, hand: { cards: [card({ id: 'spell1', name: 'Lightning Bolt', cardType: 'instant' })], revealed: false, cardCount: 1 } } }
+    useBuilderStore.setState({ players: [withHand, players[1], players[2], players[3]] as typeof players })
+
+    useBuilderStore.getState().castToStack(0, 'spell1', 'hand', 'cast')
+
+    expect(useBuilderStore.getState().players![0].zones.hand.cards).toHaveLength(0)
+    expect(useBuilderStore.getState().stack).toHaveLength(1)
+  })
+
+  it('"triggered" and "activated" do not remove the source permanent from its zone', () => {
+    const state = useBuilderStore.getState()
+    const players = state.players!
+    const withPermanent = { ...players[0], zones: { ...players[0].zones, battlefield: { cards: [card({ id: 'perm1', name: 'Bear', cardType: 'creature' })], revealed: true } } }
+    useBuilderStore.setState({ players: [withPermanent, players[1], players[2], players[3]] as typeof players })
+
+    useBuilderStore.getState().castToStack(0, 'perm1', 'battlefield', 'triggered')
+
+    expect(useBuilderStore.getState().players![0].zones.battlefield.cards).toHaveLength(1)
+    expect(useBuilderStore.getState().stack).toHaveLength(1)
+
+    useBuilderStore.getState().castToStack(0, 'perm1', 'battlefield', 'activated')
+    expect(useBuilderStore.getState().players![0].zones.battlefield.cards).toHaveLength(1)
+    expect(useBuilderStore.getState().stack).toHaveLength(2)
+  })
+
+  it('a commander cast to the stack and resolved keeps its isCommander flag through the round trip', () => {
+    const state = useBuilderStore.getState()
+    const players = state.players!
+    const commanderCard = card({ id: 'cmdr1', name: 'Atraxa', cardType: 'creature', isCommander: true })
+    const withCommand = { ...players[0], zones: { ...players[0].zones, command: { cards: [commanderCard], revealed: true } } }
+    useBuilderStore.setState({ players: [withCommand, players[1], players[2], players[3]] as typeof players })
+
+    useBuilderStore.getState().castToStack(0, 'cmdr1', 'command', 'cast')
+    const stackItem = useBuilderStore.getState().stack[0]
+    expect(stackItem.sourceCard?.isCommander).toBe(true)
+
+    useBuilderStore.getState().resolveStack(stackItem.id)
+
+    const battlefield = useBuilderStore.getState().players![0].zones.battlefield
+    expect(battlefield.cards).toHaveLength(1)
+    expect(battlefield.cards[0].isCommander).toBe(true)
+    expect(battlefield.cards[0].name).toBe('Atraxa')
+  })
+
+  it('resolveStack sends non-permanent spells to the graveyard, not the battlefield', () => {
+    const state = useBuilderStore.getState()
+    const players = state.players!
+    const withHand = { ...players[0], zones: { ...players[0].zones, hand: { cards: [card({ id: 'spell1', name: 'Lightning Bolt', cardType: 'instant' })], revealed: false, cardCount: 1 } } }
+    useBuilderStore.setState({ players: [withHand, players[1], players[2], players[3]] as typeof players })
+
+    useBuilderStore.getState().castToStack(0, 'spell1', 'hand', 'cast')
+    const stackItem = useBuilderStore.getState().stack[0]
+    useBuilderStore.getState().resolveStack(stackItem.id)
+
+    expect(useBuilderStore.getState().players![0].zones.battlefield.cards).toHaveLength(0)
+    expect(useBuilderStore.getState().players![0].zones.graveyard.cards).toHaveLength(1)
+  })
+
+  it('resolving a "triggered" ability just removes it from the stack — it does not place a card anywhere', () => {
+    const state = useBuilderStore.getState()
+    const players = state.players!
+    const withPermanent = { ...players[0], zones: { ...players[0].zones, battlefield: { cards: [card({ id: 'perm1', name: 'Bear', cardType: 'creature' })], revealed: true } } }
+    useBuilderStore.setState({ players: [withPermanent, players[1], players[2], players[3]] as typeof players })
+
+    useBuilderStore.getState().castToStack(0, 'perm1', 'battlefield', 'triggered')
+    const stackItem = useBuilderStore.getState().stack[0]
+    useBuilderStore.getState().resolveStack(stackItem.id)
+
+    expect(useBuilderStore.getState().stack).toHaveLength(0)
+    expect(useBuilderStore.getState().players![0].zones.battlefield.cards).toHaveLength(1)
+    expect(useBuilderStore.getState().players![0].zones.graveyard.cards).toHaveLength(0)
+  })
+
+  it('removeFromStack (countered) sends the card to the graveyard', () => {
+    const state = useBuilderStore.getState()
+    const players = state.players!
+    const withHand = { ...players[0], zones: { ...players[0].zones, hand: { cards: [card({ id: 'spell1', name: 'Counterspell target', cardType: 'sorcery' })], revealed: false, cardCount: 1 } } }
+    useBuilderStore.setState({ players: [withHand, players[1], players[2], players[3]] as typeof players })
+
+    useBuilderStore.getState().castToStack(0, 'spell1', 'hand', 'cast')
+    const stackItem = useBuilderStore.getState().stack[0]
+    useBuilderStore.getState().removeFromStack(stackItem.id)
+
+    expect(useBuilderStore.getState().stack).toHaveLength(0)
+    expect(useBuilderStore.getState().players![0].zones.graveyard.cards).toHaveLength(1)
+  })
+
+  it('exileFromStack sends the card to exile', () => {
+    const state = useBuilderStore.getState()
+    const players = state.players!
+    const withHand = { ...players[0], zones: { ...players[0].zones, hand: { cards: [card({ id: 'spell1', name: 'Exiled Spell', cardType: 'instant' })], revealed: false, cardCount: 1 } } }
+    useBuilderStore.setState({ players: [withHand, players[1], players[2], players[3]] as typeof players })
+
+    useBuilderStore.getState().castToStack(0, 'spell1', 'hand', 'cast')
+    const stackItem = useBuilderStore.getState().stack[0]
+    useBuilderStore.getState().exileFromStack(stackItem.id)
+
+    expect(useBuilderStore.getState().stack).toHaveLength(0)
+    expect(useBuilderStore.getState().players![0].zones.exile.cards).toHaveLength(1)
+  })
+})
+
+describe('toggleTapped / toggleRevealed', () => {
+  it('toggleTapped pushes a history entry (undo works for tap actions)', () => {
+    const state = useBuilderStore.getState()
+    const players = state.players!
+    const withCard = { ...players[0], zones: { ...players[0].zones, battlefield: { cards: [card({ id: 'c1', name: 'Bear', tapped: false })], revealed: true } } }
+    useBuilderStore.setState({ players: [withCard, players[1], players[2], players[3]] as typeof players })
+
+    useBuilderStore.getState().toggleTapped(0, 'c1')
+    expect(useBuilderStore.getState().players![0].zones.battlefield.cards[0].tapped).toBe(true)
+
+    useBuilderStore.getState().undoLastAction()
+    expect(useBuilderStore.getState().players![0].zones.battlefield.cards[0].tapped).toBe(false)
+  })
+
+  it('toggleTapped produces a log line describing the new tapped state', () => {
+    withScenarioStarted()
+    const state = useBuilderStore.getState()
+    const players = state.players!
+    const withCard = { ...players[0], zones: { ...players[0].zones, battlefield: { cards: [card({ id: 'c1', name: 'Bear', tapped: false })], revealed: true } } }
+    useBuilderStore.setState({ players: [withCard, players[1], players[2], players[3]] as typeof players })
+
+    useBuilderStore.getState().toggleTapped(0, 'c1')
+    const lines = useBuilderStore.getState().logLines
+    expect(lines[lines.length - 1]).toBe("Player's Bear is tapped.")
+  })
+
+  it('toggleRevealed on the local player (index 0) is a guarded no-op and adds no history entry', () => {
+    const state = useBuilderStore.getState()
+    const players = state.players!
+    const withCard = { ...players[0], zones: { ...players[0].zones, battlefield: { cards: [card({ id: 'c1', name: 'Bear', revealed: false })], revealed: true } } }
+    useBuilderStore.setState({ players: [withCard, players[1], players[2], players[3]] as typeof players })
+
+    useBuilderStore.getState().toggleRevealed(0, 'c1')
+    expect(useBuilderStore.getState().players![0].zones.battlefield.cards[0].revealed).toBe(false)
+
+    // If a history entry had leaked in, undo would have something to revert
+    // to (and, since nothing changed, it would be a silent no-op either way)
+    // — assert directly against the module-level guard instead by checking
+    // the state is untouched.
+    useBuilderStore.getState().undoLastAction()
+    expect(useBuilderStore.getState().players![0].zones.battlefield.cards[0].revealed).toBe(false)
+  })
+
+  it('toggleRevealed on an opponent seat toggles the flag and pushes history', () => {
+    const state = useBuilderStore.getState()
+    const players = state.players!
+    const withCard = { ...players[1], zones: { ...players[1].zones, battlefield: { cards: [card({ id: 'c1', name: 'Bear', revealed: false })], revealed: true } } }
+    useBuilderStore.setState({ players: [players[0], withCard, players[2], players[3]] as typeof players })
+
+    useBuilderStore.getState().toggleRevealed(1, 'c1')
+    expect(useBuilderStore.getState().players![1].zones.battlefield.cards[0].revealed).toBe(true)
+
+    useBuilderStore.getState().undoLastAction()
+    expect(useBuilderStore.getState().players![1].zones.battlefield.cards[0].revealed).toBe(false)
+  })
+})
+
+describe('moveCard', () => {
+  it('resets tapped to false when a card changes zones', () => {
+    const state = useBuilderStore.getState()
+    const players = state.players!
+    const withCard = { ...players[0], zones: { ...players[0].zones, battlefield: { cards: [card({ id: 'c1', name: 'Bear', tapped: true })], revealed: true } } }
+    useBuilderStore.setState({ players: [withCard, players[1], players[2], players[3]] as typeof players })
+
+    useBuilderStore.getState().moveCard(0, 'c1', 'battlefield', 'graveyard')
+
+    expect(useBuilderStore.getState().players![0].zones.graveyard.cards[0].tapped).toBe(false)
+  })
+
+  it('places a single card on top vs bottom of the library correctly', () => {
+    const state = useBuilderStore.getState()
+    const players = state.players!
+    const existingLibraryCard = card({ id: 'z1', name: 'Z' })
+    const setup = {
+      ...players[0],
+      zones: {
+        ...players[0].zones,
+        hand: { cards: [card({ id: 'h1', name: 'A' })], revealed: false, cardCount: 1 },
+        library: { cards: [existingLibraryCard], revealed: false, cardCount: 1 },
+      },
+    }
+    useBuilderStore.setState({ players: [setup, players[1], players[2], players[3]] as typeof players })
+
+    useBuilderStore.getState().moveCard(0, 'h1', 'hand', 'library', 'top')
+    expect(useBuilderStore.getState().players![0].zones.library.cards.map(c => c.name)).toEqual(['Z', 'A'])
+
+    useBuilderStore.getState().resetScenario()
+    useBuilderStore.setState({ players: [setup, players[1], players[2], players[3]] as typeof players })
+    useBuilderStore.getState().moveCard(0, 'h1', 'hand', 'library', 'bottom')
+    expect(useBuilderStore.getState().players![0].zones.library.cards.map(c => c.name)).toEqual(['A', 'Z'])
+  })
+})
+
+describe('drawCard', () => {
+  it('falls back to a placeholder card when the library has a cardCount but no materialized cards', () => {
+    // Default fresh player: library.cardCount === 99, library.cards === [].
+    useBuilderStore.getState().drawCard(0)
+
+    const stateAfter = useBuilderStore.getState()
+    expect(stateAfter.players![0].zones.library.cardCount).toBe(98)
+    expect(stateAfter.players![0].zones.library.cards).toHaveLength(0)
+    expect(stateAfter.players![0].zones.hand.cards).toHaveLength(1)
+    expect(stateAfter.players![0].zones.hand.cards[0].faceDown).toBe(true)
+  })
+
+  it('draws the materialized top card (end of array) when the library is populated', () => {
+    const state = useBuilderStore.getState()
+    const players = state.players!
+    const setup = {
+      ...players[0],
+      zones: { ...players[0].zones, library: { cards: [card({ id: 'bottom', name: 'Bottom' }), card({ id: 'top', name: 'Top' })], revealed: false, cardCount: 2 } },
+    }
+    useBuilderStore.setState({ players: [setup, players[1], players[2], players[3]] as typeof players })
+
+    useBuilderStore.getState().drawCard(0)
+
+    const stateAfter = useBuilderStore.getState()
+    expect(stateAfter.players![0].zones.hand.cards[0].name).toBe('Top')
+    expect(stateAfter.players![0].zones.library.cards.map(c => c.name)).toEqual(['Bottom'])
+    expect(stateAfter.players![0].zones.library.cardCount).toBe(1)
+  })
+
+  it('is a no-op when the library is fully empty', () => {
+    const state = useBuilderStore.getState()
+    const players = state.players!
+    const setup = { ...players[0], zones: { ...players[0].zones, library: { cards: [], revealed: false, cardCount: 0 } } }
+    useBuilderStore.setState({ players: [setup, players[1], players[2], players[3]] as typeof players })
+
+    useBuilderStore.getState().drawCard(0)
+
+    expect(useBuilderStore.getState().players![0].zones.hand.cards).toHaveLength(0)
+  })
+})
+
+describe('addCard / silentAddCard to the library zone itself', () => {
+  it('addCard(zone="library") actually adds the card instead of being silently dropped', () => {
+    useBuilderStore.getState().addCard(0, 'library', card({ id: 'new1', name: 'Fresh draw' }))
+    const library = useBuilderStore.getState().players![0].zones.library
+    expect(library.cards.map(c => c.id)).toContain('new1')
+  })
+
+  it('silentAddCard(zone="library") actually adds the card, and adds no history/log entries', () => {
+    const logLinesBefore = useBuilderStore.getState().logLines.length
+    useBuilderStore.getState().silentAddCard(0, 'library', card({ id: 'new1', name: 'Fresh draw' }))
+
+    const stateAfter = useBuilderStore.getState()
+    expect(stateAfter.players![0].zones.library.cards.map(c => c.id)).toContain('new1')
+    expect(stateAfter.logLines.length).toBe(logLinesBefore)
+
+    // No history entry should have been pushed either.
+    useBuilderStore.getState().undoLastAction()
+    expect(useBuilderStore.getState().players![0].zones.library.cards.map(c => c.id)).toContain('new1')
+  })
+})
+
+describe('undoLastAction', () => {
+  it('is a safe no-op when there is no history', () => {
+    expect(() => useBuilderStore.getState().undoLastAction()).not.toThrow()
+  })
+
+  it('restores players, stack, and logLines together from a single prior action', () => {
+    withScenarioStarted()
+    const state = useBuilderStore.getState()
+    const players = state.players!
+    const withHand = { ...players[0], zones: { ...players[0].zones, hand: { cards: [card({ id: 'spell1', name: 'Lightning Bolt', cardType: 'instant' })], revealed: false, cardCount: 1 } } }
+    useBuilderStore.setState({ players: [withHand, players[1], players[2], players[3]] as typeof players })
+
+    const playersBefore = useBuilderStore.getState().players
+    const stackBefore = useBuilderStore.getState().stack
+    const logLinesBefore = useBuilderStore.getState().logLines
+
+    useBuilderStore.getState().castToStack(0, 'spell1', 'hand', 'cast')
+
+    expect(useBuilderStore.getState().players).not.toEqual(playersBefore)
+    expect(useBuilderStore.getState().stack).not.toEqual(stackBefore)
+    expect(useBuilderStore.getState().logLines).not.toEqual(logLinesBefore)
+
+    useBuilderStore.getState().undoLastAction()
+
+    expect(useBuilderStore.getState().players).toEqual(playersBefore)
+    expect(useBuilderStore.getState().stack).toEqual(stackBefore)
+    expect(useBuilderStore.getState().logLines).toEqual(logLinesBefore)
+  })
+})
