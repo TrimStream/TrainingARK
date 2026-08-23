@@ -28,8 +28,10 @@ interface ScenarioListItem {
   description: string
   difficulty: string
   updatedAt: string
-  published: boolean
+  visibility: ScenarioVisibility
 }
+
+type ScenarioVisibility = 'DRAFT' | 'UNLISTED' | 'PUBLIC'
 
 export function BuilderHeader({ initialScenarioId }: { initialScenarioId?: string } = {}) {
   const {
@@ -50,8 +52,8 @@ export function BuilderHeader({ initialScenarioId }: { initialScenarioId?: strin
   const [showDetails, setShowDetails] = useState(false)
   const [savedScenarioId, setSavedScenarioId] = useState<string | null>(null)
   const [scenarioAuthorId, setScenarioAuthorId] = useState<string | null>(null)
-  const [published, setPublished] = useState(false)
-  const [publishing, setPublishing] = useState(false)
+  const [visibility, setVisibility] = useState<ScenarioVisibility>('DRAFT')
+  const [savingVisibility, setSavingVisibility] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [showLoad, setShowLoad] = useState(false)
   const [scenarioList, setScenarioList] = useState<ScenarioListItem[]>([])
@@ -163,7 +165,7 @@ export function BuilderHeader({ initialScenarioId }: { initialScenarioId?: strin
         setSavedScenarioId(result.id)
       }
       if (result.authorId !== undefined) setScenarioAuthorId(result.authorId)
-      if (typeof result.published === 'boolean') setPublished(result.published)
+      if (result.visibility) setVisibility(result.visibility)
 
       lastSavedBodyRef.current = body
       flashSaved()
@@ -211,25 +213,28 @@ export function BuilderHeader({ initialScenarioId }: { initialScenarioId?: strin
     if (savedTimerRef.current) clearTimeout(savedTimerRef.current)
   }, [])
 
-  async function handleTogglePublish() {
-    if (!savedScenarioId || publishing) return
-    setPublishing(true)
+  async function handleVisibilityChange(nextVisibility: ScenarioVisibility) {
+    if (!savedScenarioId || savingVisibility || nextVisibility === visibility) return
+    const previousVisibility = visibility
+    setVisibility(nextVisibility)
+    setSavingVisibility(true)
     setSaveError(null)
     try {
       const res = await fetch(`/api/scenarios/${savedScenarioId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ published: !published }),
+        body: JSON.stringify({ visibility: nextVisibility }),
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const result = await res.json()
-      setPublished(!!result.published)
+      setVisibility(result.visibility)
     } catch (err) {
-      console.error('Publish toggle failed:', err)
+      console.error('Visibility update failed:', err)
+      setVisibility(previousVisibility)
       setSaveState('error')
-      setSaveError('Publish failed')
+      setSaveError('Visibility update failed')
     } finally {
-      setPublishing(false)
+      setSavingVisibility(false)
     }
   }
 
@@ -250,7 +255,7 @@ export function BuilderHeader({ initialScenarioId }: { initialScenarioId?: strin
       lastSavedBodyRef.current = null
       setSavedScenarioId(null)
       setScenarioAuthorId(null)
-      setPublished(false)
+      setVisibility('DRAFT')
       setSaveState('idle')
       setSaveError(null)
       resetScenario()
@@ -274,8 +279,8 @@ export function BuilderHeader({ initialScenarioId }: { initialScenarioId?: strin
     setShowLoad(true)
     setLoadingList(true)
     try {
-      // `mine=1` — the unfiltered list also contains other authors' published
-      // scenarios, which you can't save over anyway.
+      // `mine=1` returns creator-only content, including drafts and unlisted
+      // scenarios that discovery deliberately excludes.
       const res = await fetch('/api/scenarios?mine=1')
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const list = await res.json()
@@ -309,7 +314,7 @@ export function BuilderHeader({ initialScenarioId }: { initialScenarioId?: strin
       lastSavedBodyRef.current = null
       setSavedScenarioId(scenario.id)
       setScenarioAuthorId(scenario.authorId ?? null)
-      setPublished(!!scenario.published)
+      setVisibility(scenario.visibility)
       setSaveState('idle')
       setSaveError(null)
       setShowLoad(false)
@@ -366,16 +371,17 @@ export function BuilderHeader({ initialScenarioId }: { initialScenarioId?: strin
           {DIFFICULTY_LABELS[difficulty]}
         </span>
         {savedScenarioId && (
-          <button
-            className={`${styles.publishBtn} ${published ? styles.publishBtnLive : ''}`}
-            onClick={handleTogglePublish}
-            disabled={publishing}
-            title={published
-              ? 'Unpublish — hides it from everyone but you'
-              : 'Publish — makes it visible to everyone'}
+          <select
+            className={`${styles.publishBtn} ${visibility === 'PUBLIC' ? styles.publishBtnLive : ''}`}
+            value={visibility}
+            onChange={e => { void handleVisibilityChange(e.target.value as ScenarioVisibility) }}
+            disabled={savingVisibility}
+            title="Drafts are private, unlisted scenarios work by link, and public scenarios appear in discovery"
           >
-            {publishing ? '...' : published ? 'Published' : 'Publish'}
-          </button>
+            <option value="DRAFT">Draft</option>
+            <option value="UNLISTED">Unlisted</option>
+            <option value="PUBLIC">Public</option>
+          </select>
         )}
       </div>
 
@@ -504,7 +510,7 @@ export function BuilderHeader({ initialScenarioId }: { initialScenarioId?: strin
                   >
                     <span className={styles.loadRowTitle}>{s.title}</span>
                     <span className={styles.loadRowMeta}>
-                      {s.published ? 'Published' : 'Draft'} · {s.difficulty} · {new Date(s.updatedAt).toLocaleDateString()}
+                      {s.visibility === 'PUBLIC' ? 'Public' : s.visibility === 'UNLISTED' ? 'Unlisted' : 'Draft'} · {s.difficulty} · {new Date(s.updatedAt).toLocaleDateString()}
                     </span>
                   </button>
                 ))}

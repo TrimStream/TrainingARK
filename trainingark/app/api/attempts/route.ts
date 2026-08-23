@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
+import { canViewScenario, type ScenarioVisibilityValue } from '@/lib/scenarioVisibility'
 
 // A generous ceiling so the history page and the viewer's best-score lookup
 // share one endpoint without either being able to pull the whole table.
@@ -13,13 +14,13 @@ function toAttemptResponse(row: {
   score: number
   maxScore: number
   completedAt: Date
-  scenario: { id: string; title: string; published: boolean; authorId: string | null } | null
+  scenario: { id: string; title: string; visibility: ScenarioVisibilityValue; authorId: string | null } | null
 }, userId: string) {
   // The snapshot is only a fallback: while the scenario still exists its
   // current title wins, so a rename is reflected in your history.
   const available = row.scenario !== null
   const linkable = row.scenario !== null
-    && (row.scenario.published || row.scenario.authorId === userId)
+    && canViewScenario(row.scenario, userId)
 
   return {
     id: row.id,
@@ -54,7 +55,7 @@ export async function GET(req: NextRequest) {
         score: true,
         maxScore: true,
         completedAt: true,
-        scenario: { select: { id: true, title: true, published: true, authorId: true } },
+        scenario: { select: { id: true, title: true, visibility: true, authorId: true } },
       },
       orderBy: { completedAt: 'desc' },
       take: MAX_ROWS,
@@ -107,9 +108,9 @@ export async function POST(req: NextRequest) {
     // The title snapshot comes from the database, never the request body.
     const scenario = await prisma.scenario.findUnique({
       where: { id: scenarioId },
-      select: { id: true, title: true },
+      select: { id: true, title: true, visibility: true, authorId: true },
     })
-    if (!scenario) {
+    if (!scenario || !canViewScenario(scenario, userId)) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 

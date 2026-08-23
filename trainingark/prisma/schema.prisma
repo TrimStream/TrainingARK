@@ -9,15 +9,15 @@ datasource db {
 }
 
 model Scenario {
-  id          String   @id @default(cuid())
-  title       String
-  description String
-  difficulty  String   @default("beginner")
-  commanders  String[] @default([])
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  published   Boolean  @default(false)
-  data        Json
+  id            String             @id @default(cuid())
+  title         String
+  description   String
+  difficulty    String             @default("beginner")
+  commanders    String[]           @default([])
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  visibility    ScenarioVisibility @default(DRAFT)
+  data          Json
   events        Event[]
   attempts      Attempt[]
   bookmarks     Bookmark[]
@@ -28,6 +28,13 @@ model Scenario {
   author   User?   @relation(fields: [authorId], references: [id])
 
   @@index([authorId])
+  @@index([visibility, updatedAt])
+}
+
+enum ScenarioVisibility {
+  DRAFT
+  UNLISTED
+  PUBLIC
 }
 
 model Event {
@@ -88,7 +95,7 @@ model Playlist {
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   name        String
   description String?
-  // Chosen at creation, same default as Scenario.published. Stored and
+  // Chosen at creation. Stored and
   // settable today; nothing reads it for public access yet.
   public      Boolean  @default(false)
   createdAt   DateTime @default(now())

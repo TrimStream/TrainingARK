@@ -19,7 +19,7 @@ export interface ScenarioCardData {
   difficulty: string
   commanders: string[]
   updatedAt: string
-  published: boolean
+  visibility: 'DRAFT' | 'UNLISTED' | 'PUBLIC'
   author?: ScenarioCardAuthor | null
 }
 
@@ -42,7 +42,11 @@ export function ScenarioCard({ s }: { s: ScenarioCardData }) {
           <span className={`${styles.difficultyBadge} ${styles[`badge_${s.difficulty}`]}`}>
             {DIFFICULTY_LABELS[s.difficulty] ?? s.difficulty}
           </span>
-          {!s.published && <span className={styles.draftBadge}>Draft</span>}
+          {s.visibility !== 'PUBLIC' && (
+            <span className={styles.draftBadge}>
+              {s.visibility === 'UNLISTED' ? 'Unlisted' : 'Draft'}
+            </span>
+          )}
         </div>
         <div className={styles.cardBody}>
           <span className={styles.cardTitle}>{s.title}</span>

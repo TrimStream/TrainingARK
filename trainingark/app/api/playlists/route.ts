@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
+import { canViewScenario } from '@/lib/scenarioVisibility'
 
 export const MAX_NAME_LENGTH = 60
 export const MAX_DESCRIPTION_LENGTH = 300
@@ -86,19 +87,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: descResult.error }, { status: 400 })
     }
 
-    // Same default as Scenario.published: private unless explicitly chosen.
+    // Playlists retain their own public/private flag independently of scenario visibility.
     const isPublic = body?.public === true
 
     // Optional: creating a playlist from the save popover seeds it with the
     // scenario you were looking at.
     const seedId = typeof body?.scenarioId === 'string' ? body.scenarioId : ''
-    let seed: { id: string; title: string } | null = null
+    let seed: {
+      id: string
+      title: string
+      visibility: 'DRAFT' | 'UNLISTED' | 'PUBLIC'
+      authorId: string | null
+    } | null = null
     if (seedId) {
       seed = await prisma.scenario.findUnique({
         where: { id: seedId },
-        select: { id: true, title: true },
+        select: { id: true, title: true, visibility: true, authorId: true },
       })
-      if (!seed) {
+      if (!seed || !canViewScenario(seed, userId)) {
         return NextResponse.json({ error: 'Not found' }, { status: 404 })
       }
     }

@@ -46,14 +46,14 @@ export async function GET(req: NextRequest) {
     // fields with the same ILIKE keeps case and escaping behaviour identical
     // across them.
     //
-    // `published = true` is repeated here so LIMIT cannot be filled by rows the
+    // `visibility = PUBLIC` is repeated here so LIMIT cannot be filled by rows the
     // outer filter would then discard; PUBLIC_SCENARIO_WHERE stays the
     // authoritative visibility check.
     const matches = await prisma.$queryRaw<{ id: string }[]>(Prisma.sql`
       SELECT s."id"
       FROM "Scenario" s
       LEFT JOIN "User" u ON u."id" = s."authorId"
-      WHERE s."published" = true
+      WHERE s."visibility" = 'PUBLIC'
         AND (
           s."title" ILIKE ${pattern}
           OR u."name" ILIKE ${pattern}

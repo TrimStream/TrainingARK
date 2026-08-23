@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
+import { canViewScenario } from '@/lib/scenarioVisibility'
 
 export async function POST(
   req: NextRequest,
@@ -34,9 +35,9 @@ export async function POST(
 
     const scenario = await prisma.scenario.findUnique({
       where: { id: scenarioId },
-      select: { id: true, title: true },
+      select: { id: true, title: true, visibility: true, authorId: true },
     })
-    if (!scenario) {
+    if (!scenario || !canViewScenario(scenario, userId)) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 

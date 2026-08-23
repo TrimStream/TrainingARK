@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
 import {
+  parseScenarioVisibility,
   SCENARIO_CARD_SELECT,
   ownScenarioWhere,
   visibleScenarioWhere,
@@ -32,9 +33,15 @@ export async function POST(req: NextRequest) {
     }
     const body = JSON.parse(raw)
     const { title, description, difficulty, data, commanders } = body
+    const visibility = body.visibility === undefined
+      ? 'DRAFT'
+      : parseScenarioVisibility(body.visibility)
 
     if (!title || !data) {
       return NextResponse.json({ error: 'Missing title or data' }, { status: 400 })
+    }
+    if (!visibility) {
+      return NextResponse.json({ error: 'Invalid visibility' }, { status: 400 })
     }
 
     const scenario = await prisma.scenario.create({
@@ -43,6 +50,7 @@ export async function POST(req: NextRequest) {
         description: description ?? '',
         difficulty: difficulty ?? 'beginner',
         commanders: sanitizeCommanders(commanders),
+        visibility,
         data,
         authorId: userId,
       },
@@ -60,9 +68,8 @@ export async function GET(req: NextRequest) {
     const session = await auth()
     const userId = session?.user?.id
 
-    // `?mine=1` is what the builder's Load modal uses: the plain list has to
-    // include other authors' published scenarios for the home feed, which is
-    // not what you want to load into your own builder.
+    // `?mine=1` is what the builder and dashboard use for creator-only content.
+    // The plain list is discovery-only and therefore contains public scenarios.
     const mineOnly = new URL(req.url).searchParams.get('mine') === '1'
     if (mineOnly && !userId) {
       return NextResponse.json({ error: 'Not signed in' }, { status: 401 })

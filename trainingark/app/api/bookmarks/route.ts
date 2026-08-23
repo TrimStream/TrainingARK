@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
-import { SCENARIO_CARD_SELECT, toScenarioAuthor } from '@/lib/scenarioVisibility'
+import {
+  canViewScenario,
+  SCENARIO_CARD_SELECT,
+  toScenarioAuthor,
+  type ScenarioVisibilityValue,
+} from '@/lib/scenarioVisibility'
 
 /**
  * Shapes a saved row for the UI. Mirrors the attempts route: the live scenario
@@ -18,7 +23,7 @@ export function toSavedScenario(
       difficulty: string
       commanders: string[]
       updatedAt: Date
-      published: boolean
+      visibility: ScenarioVisibilityValue
       authorId: string | null
       author: { id: string; name: string | null } | null
     } | null
@@ -26,7 +31,7 @@ export function toSavedScenario(
   userId: string
 ) {
   const s = row.scenario
-  const visible = s !== null && (s.published || s.authorId === userId)
+  const visible = s !== null && canViewScenario(s, userId)
 
   return {
     available: s !== null,
@@ -40,7 +45,7 @@ export function toSavedScenario(
           difficulty: s.difficulty,
           commanders: s.commanders,
           updatedAt: s.updatedAt,
-          published: s.published,
+          visibility: s.visibility,
           author: toScenarioAuthor(s.author),
         }
       : null,
@@ -106,9 +111,9 @@ export async function POST(req: NextRequest) {
     // Title snapshot comes from the database, never the request body.
     const scenario = await prisma.scenario.findUnique({
       where: { id: scenarioId },
-      select: { id: true, title: true },
+      select: { id: true, title: true, visibility: true, authorId: true },
     })
-    if (!scenario) {
+    if (!scenario || !canViewScenario(scenario, userId)) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 

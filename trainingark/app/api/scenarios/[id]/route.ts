@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
+import { canViewScenario, parseScenarioVisibility } from '@/lib/scenarioVisibility'
 
 const MAX_PAYLOAD_BYTES = 8_000_000
 const MAX_COMMANDERS = 8
@@ -23,11 +24,11 @@ export async function GET(
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 
-    // Unpublished scenarios are visible to their author only. 404 rather than
-    // 403 so a draft's existence isn't leaked.
-    if (!scenario.published) {
+    // Drafts are visible to their author only. Unlisted scenarios work for
+    // anyone with the URL but never enter discovery surfaces.
+    if (scenario.visibility === 'DRAFT') {
       const session = await auth()
-      if (!session?.user?.id || session.user.id !== scenario.authorId) {
+      if (!canViewScenario(scenario, session?.user?.id)) {
         return NextResponse.json({ error: 'Not found' }, { status: 404 })
       }
     }
@@ -70,7 +71,13 @@ export async function PUT(
       return NextResponse.json({ error: 'Payload too large' }, { status: 413 })
     }
     const body = JSON.parse(raw)
-    const { title, description, difficulty, data, commanders, published } = body
+    const { title, description, difficulty, data, commanders } = body
+    const visibility = body.visibility === undefined
+      ? undefined
+      : parseScenarioVisibility(body.visibility)
+    if (body.visibility !== undefined && !visibility) {
+      return NextResponse.json({ error: 'Invalid visibility' }, { status: 400 })
+    }
 
     const scenario = await prisma.scenario.update({
       where: { id },
@@ -80,13 +87,13 @@ export async function PUT(
         ...(difficulty !== undefined && { difficulty }),
         ...(commanders !== undefined && { commanders: sanitizeCommanders(commanders) }),
         ...(data !== undefined && { data }),
-        ...(typeof published === 'boolean' && { published }),
+        ...(visibility && { visibility }),
       },
     })
 
     return NextResponse.json({
       id: scenario.id,
-      published: scenario.published,
+      visibility: scenario.visibility,
       authorId: scenario.authorId,
     })
   } catch (err) {

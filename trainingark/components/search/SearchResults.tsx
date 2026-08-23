@@ -62,7 +62,7 @@ export function SearchResults({ query }: { query: string }) {
           <div className={styles.emptyState}>
             <h2 className={styles.emptyTitle}>What are you looking for?</h2>
             <p className={styles.emptyText}>
-              Search published scenarios by title, commander, or the Arkitekt who built them
+              Search public scenarios by title, commander, or the Arkitekt who built them
               using the bar at the top of the page.
             </p>
           </div>
@@ -95,7 +95,7 @@ export function SearchResults({ query }: { query: string }) {
           <div className={styles.emptyState}>
             <h2 className={styles.emptyTitle}>No scenarios found for &ldquo;{query}&rdquo;</h2>
             <p className={styles.emptyText}>
-              Try a different title, commander, or Arkitekt name. Only published scenarios
+              Try a different title, commander, or Arkitekt name. Only public scenarios
               are searchable.
             </p>
             <Link href="/builder" className={styles.emptyBtn}>Create scenario</Link>

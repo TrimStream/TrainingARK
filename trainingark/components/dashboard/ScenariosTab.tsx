@@ -14,7 +14,7 @@ interface DashboardScenario {
   difficulty: string
   commanders: string[]
   updatedAt: string
-  published: boolean
+  visibility: 'DRAFT' | 'UNLISTED' | 'PUBLIC'
   author?: { id: string; name: string } | null
 }
 
@@ -153,8 +153,8 @@ export function ScenariosTab() {
                   <span className={`${styles.difficultyBadge} ${styles[`badge_${s.difficulty}`]}`}>
                     {DIFFICULTY_LABELS[s.difficulty] ?? s.difficulty}
                   </span>
-                  <span className={`${styles.statusBadge} ${s.published ? styles.statusPublished : styles.statusDraft}`}>
-                    {s.published ? 'Published' : 'Draft'}
+                  <span className={`${styles.statusBadge} ${s.visibility === 'PUBLIC' ? styles.statusPublished : styles.statusDraft}`}>
+                    {s.visibility === 'PUBLIC' ? 'Public' : s.visibility === 'UNLISTED' ? 'Unlisted' : 'Draft'}
                   </span>
                 </div>
 

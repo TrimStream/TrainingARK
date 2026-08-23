@@ -1,23 +1,39 @@
-import type { Prisma } from '@prisma/client'
+import { ScenarioVisibility, type Prisma } from '@prisma/client'
+
+export const SCENARIO_VISIBILITIES = ['DRAFT', 'UNLISTED', 'PUBLIC'] as const
+export type ScenarioVisibilityValue = (typeof SCENARIO_VISIBILITIES)[number]
+
+export function parseScenarioVisibility(input: unknown): ScenarioVisibilityValue | null {
+  return typeof input === 'string' && SCENARIO_VISIBILITIES.includes(input as ScenarioVisibilityValue)
+    ? input as ScenarioVisibilityValue
+    : null
+}
+
+export function canViewScenario(
+  scenario: { visibility: ScenarioVisibilityValue; authorId: string | null },
+  userId?: string
+): boolean {
+  return scenario.visibility !== ScenarioVisibility.DRAFT || scenario.authorId === userId
+}
 
 // The single place scenario visibility is defined. Both the list endpoint and
 // the search endpoint import from here so the rules can't drift apart.
 
 /**
- * The public rule: only published scenarios. This is what an unauthenticated
- * visitor sees, and it is also what search is limited to — search never
- * surfaces drafts, not even your own.
+ * Discovery is public-only. Home, search, and future feeds never surface
+ * drafts or unlisted scenarios, including the signed-in user's own.
  */
-export const PUBLIC_SCENARIO_WHERE: Prisma.ScenarioWhereInput = { published: true }
+export const PUBLIC_SCENARIO_WHERE: Prisma.ScenarioWhereInput = {
+  visibility: ScenarioVisibility.PUBLIC,
+}
 
 /**
- * The home-feed rule: everyone sees published scenarios; a signed-in user
- * additionally sees their own drafts. Another author's drafts are never
- * returned.
+ * Authentication does not change discovery. Creator-only content belongs in
+ * the explicit `?mine=1` surfaces instead.
  */
 export function visibleScenarioWhere(userId?: string): Prisma.ScenarioWhereInput {
-  if (!userId) return PUBLIC_SCENARIO_WHERE
-  return { OR: [PUBLIC_SCENARIO_WHERE, { authorId: userId }] }
+  void userId
+  return PUBLIC_SCENARIO_WHERE
 }
 
 /** The `?mine=1` rule: this author's scenarios only, drafts included. */
@@ -38,7 +54,7 @@ export const SCENARIO_CARD_SELECT = {
   commanders: true,
   createdAt: true,
   updatedAt: true,
-  published: true,
+  visibility: true,
   authorId: true,
   author: { select: { id: true, name: true } },
 } satisfies Prisma.ScenarioSelect
