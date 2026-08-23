@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { ContentPage } from '@/components/shell/ContentPage'
 import { SettingsClient } from '@/components/settings/SettingsClient'
+import { prisma } from '@/lib/prisma'
 
 import type { Metadata } from 'next'
 
@@ -16,10 +17,14 @@ export default async function SettingsPage() {
   // name → email-local-part fallback useAuth() uses for the sidebar.
   const email = session.user.email ?? ''
   const name = session.user.name?.trim() || email.split('@')[0] || ''
+  const account = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { bio: true },
+  })
 
   return (
     <ContentPage title="Settings">
-      <SettingsClient email={email} name={name} />
+      <SettingsClient email={email} name={name} bio={account?.bio ?? ''} />
     </ContentPage>
   )
 }

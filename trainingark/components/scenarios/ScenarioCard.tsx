@@ -5,7 +5,7 @@ import styles from './ScenarioCard.module.css'
 /**
  * Author as every scenario surface receives it. Mirrors ScenarioAuthor in
  * lib/scenarioVisibility.ts — the id rides along with the name so the planned
- * /author/<id> page can be linked later without touching the API or this prop.
+ * public profile can be linked without another author request.
  */
 export interface ScenarioCardAuthor {
   id: string
@@ -37,34 +37,39 @@ export function ScenarioCard({ s }: { s: ScenarioCardData }) {
     // float over the thumbnail.
     <div className={styles.cardWrap}>
       <ScenarioSaveControls scenarioId={s.id} variant="card" />
-      <Link href={`/scenario/${s.id}`} className={styles.card}>
-        <div className={styles.cardThumb}>
-          <span className={`${styles.difficultyBadge} ${styles[`badge_${s.difficulty}`]}`}>
-            {DIFFICULTY_LABELS[s.difficulty] ?? s.difficulty}
-          </span>
-          {s.visibility !== 'PUBLIC' && (
-            <span className={styles.draftBadge}>
-              {s.visibility === 'UNLISTED' ? 'Unlisted' : 'Draft'}
+      <div className={styles.card}>
+        <Link href={`/scenario/${s.id}`} className={styles.scenarioLink}>
+          <div className={styles.cardThumb}>
+            <span className={`${styles.difficultyBadge} ${styles[`badge_${s.difficulty}`]}`}>
+              {DIFFICULTY_LABELS[s.difficulty] ?? s.difficulty}
             </span>
-          )}
-        </div>
-        <div className={styles.cardBody}>
-          <span className={styles.cardTitle}>{s.title}</span>
-          {s.description && <p className={styles.cardDesc}>{s.description}</p>}
-          {s.commanders.length > 0 && (
-            <div className={styles.cardCommanders}>
-              {s.commanders.slice(0, 3).map((name, i) => (
-                <span key={i} className={styles.commanderChip}>{name}</span>
-              ))}
-              {s.commanders.length > 3 && (
-                <span className={styles.commanderMore}>+{s.commanders.length - 3}</span>
-              )}
-            </div>
-          )}
-          {/* Not a link: there is no author page yet. See .cardAuthor in the CSS. */}
-          {s.author && <span className={styles.cardAuthor}>by {s.author.name}</span>}
-        </div>
-      </Link>
+            {s.visibility !== 'PUBLIC' && (
+              <span className={styles.draftBadge}>
+                {s.visibility === 'UNLISTED' ? 'Unlisted' : 'Draft'}
+              </span>
+            )}
+          </div>
+          <div className={styles.cardBody}>
+            <span className={styles.cardTitle}>{s.title}</span>
+            {s.description && <p className={styles.cardDesc}>{s.description}</p>}
+            {s.commanders.length > 0 && (
+              <div className={styles.cardCommanders}>
+                {s.commanders.slice(0, 3).map((name, i) => (
+                  <span key={i} className={styles.commanderChip}>{name}</span>
+                ))}
+                {s.commanders.length > 3 && (
+                  <span className={styles.commanderMore}>+{s.commanders.length - 3}</span>
+                )}
+              </div>
+            )}
+          </div>
+        </Link>
+        {s.author && (
+          <Link href={`/arkitekts/${s.author.id}`} className={styles.cardAuthor}>
+            by {s.author.name}
+          </Link>
+        )}
+      </div>
     </div>
   )
 }

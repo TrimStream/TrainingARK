@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useSession, signOut } from 'next-auth/react'
+import { MAX_ARKITEKT_BIO_LENGTH } from '@/lib/arkitektProfile'
 import styles from './SettingsClient.module.css'
 
 const MIN_PASSWORD_LENGTH = 8
@@ -10,12 +11,14 @@ const MIN_PASSWORD_LENGTH = 8
 interface SettingsClientProps {
   email: string
   name: string
+  bio: string
 }
 
-export function SettingsClient({ email, name }: SettingsClientProps) {
+export function SettingsClient({ email, name, bio }: SettingsClientProps) {
   const { update } = useSession()
 
   const [displayName, setDisplayName] = useState(name)
+  const [profileBio, setProfileBio] = useState(bio)
   const [nameBusy, setNameBusy] = useState(false)
   const [nameError, setNameError] = useState<string | null>(null)
   const [nameSaved, setNameSaved] = useState(false)
@@ -52,7 +55,7 @@ export function SettingsClient({ email, name }: SettingsClientProps) {
       const res = await fetch('/api/user', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: displayName }),
+        body: JSON.stringify({ name: displayName, bio: profileBio }),
       })
       const body = await res.json().catch(() => ({}))
       if (!res.ok) {
@@ -64,6 +67,7 @@ export function SettingsClient({ email, name }: SettingsClientProps) {
       // old name until the next sign-in.
       await update({ name: body.name })
       setDisplayName(body.name)
+      setProfileBio(body.bio ?? '')
       setNameSaved(true)
     } catch (err) {
       console.error('Display name update failed:', err)
@@ -134,8 +138,8 @@ export function SettingsClient({ email, name }: SettingsClientProps) {
       <section className={styles.section}>
         <h2 className={styles.heading}>Profile</h2>
         <p className={styles.hint}>
-          Your display name is what appears in the sidebar and on your scenarios. Your email is
-          how you sign in and cannot be changed here.
+          Your display name and bio appear on your public Arkitekt profile. Your email is how you
+          sign in and is never shown publicly.
         </p>
 
         <form className={styles.form} onSubmit={handleNameSubmit}>
@@ -157,11 +161,27 @@ export function SettingsClient({ email, name }: SettingsClientProps) {
             />
           </div>
 
+          <div>
+            <label className={styles.fieldLabel} htmlFor="settings-bio">Bio</label>
+            <textarea
+              id="settings-bio"
+              className={styles.textarea}
+              value={profileBio}
+              onChange={e => { setProfileBio(e.target.value); setNameSaved(false) }}
+              placeholder="What kinds of cEDH scenarios do you build?"
+              maxLength={MAX_ARKITEKT_BIO_LENGTH}
+              rows={4}
+            />
+            <span className={styles.characterCount}>
+              {profileBio.length}/{MAX_ARKITEKT_BIO_LENGTH}
+            </span>
+          </div>
+
           {nameError && <p className={styles.error}>{nameError}</p>}
-          {nameSaved && <p className={styles.success}>Display name updated.</p>}
+          {nameSaved && <p className={styles.success}>Profile updated.</p>}
 
           <button className={styles.submitBtn} type="submit" disabled={nameBusy}>
-            {nameBusy ? 'Saving...' : 'Save name'}
+            {nameBusy ? 'Saving...' : 'Save profile'}
           </button>
         </form>
       </section>

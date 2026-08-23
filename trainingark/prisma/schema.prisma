@@ -133,6 +133,7 @@ model User {
   email         String?   @unique
   emailVerified DateTime?
   image         String?
+  bio           String?
   passwordHash  String?
   createdAt     DateTime  @default(now())
 

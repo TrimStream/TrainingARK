@@ -1,0 +1,87 @@
+.page {
+  max-width: 1200px;
+  padding: 32px 24px 56px;
+}
+
+.profileHeader {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  padding-bottom: 28px;
+  margin-bottom: 28px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.avatar {
+  width: 76px;
+  height: 76px;
+  flex: 0 0 76px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #8b6914, #c9a84c);
+  color: #0f0f13;
+  font-size: 1.8rem;
+  font-weight: 800;
+}
+
+.identity { min-width: 0; }
+
+.name {
+  margin: 0;
+  color: #e8e0d4;
+  font-size: 1.65rem;
+  line-height: 1.2;
+}
+
+.meta {
+  margin: 6px 0 0;
+  color: rgba(232, 224, 212, 0.45);
+  font-size: 0.75rem;
+}
+
+.bio {
+  max-width: 680px;
+  margin: 14px 0 0;
+  color: rgba(232, 224, 212, 0.72);
+  font-size: 0.86rem;
+  line-height: 1.65;
+  white-space: pre-wrap;
+}
+
+.sectionTitle {
+  margin: 0 0 16px;
+  color: #e8e0d4;
+  font-size: 1.05rem;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 18px;
+}
+
+.emptyState {
+  padding: 28px;
+  border: 1px dashed rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+
+.emptyState h3 {
+  margin: 0 0 6px;
+  color: rgba(232, 224, 212, 0.75);
+  font-size: 0.9rem;
+}
+
+.emptyState p {
+  margin: 0;
+  color: rgba(232, 224, 212, 0.4);
+  font-size: 0.76rem;
+}
+
+@media (max-width: 600px) {
+  .page { padding: 24px 16px 40px; }
+  .profileHeader { gap: 14px; }
+  .avatar { width: 58px; height: 58px; flex-basis: 58px; font-size: 1.35rem; }
+  .name { font-size: 1.35rem; }
+}

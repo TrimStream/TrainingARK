@@ -61,8 +61,8 @@ export const SCENARIO_CARD_SELECT = {
 
 /**
  * Author info as every consumer receives it. The id is always carried
- * alongside the name so an /author/<id> page can be linked later without
- * re-plumbing the API, even though nothing links to it today.
+ * alongside the name so cards can link to /arkitekts/<id> without re-plumbing
+ * the API.
  */
 export interface ScenarioAuthor {
   id: string

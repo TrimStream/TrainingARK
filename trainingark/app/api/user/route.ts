@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
+import { normalizeArkitektBio } from '@/lib/arkitektProfile'
 
 const MIN_NAME_LENGTH = 2
 const MAX_NAME_LENGTH = 40
@@ -18,7 +19,7 @@ export async function PATCH(req: NextRequest) {
     // Each field is validated only when it is actually supplied, so the
     // settings form can send just { name } and the history page just
     // { historyEnabled } through the same route.
-    const data: { name?: string; historyEnabled?: boolean } = {}
+    const data: { name?: string; bio?: string | null; historyEnabled?: boolean } = {}
 
     if (body?.name !== undefined) {
       const name = typeof body.name === 'string' ? body.name.trim() : ''
@@ -29,6 +30,14 @@ export async function PATCH(req: NextRequest) {
         )
       }
       data.name = name
+    }
+
+    if (body?.bio !== undefined) {
+      const bio = normalizeArkitektBio(body.bio)
+      if (!bio.ok) {
+        return NextResponse.json({ error: bio.error }, { status: 400 })
+      }
+      data.bio = bio.value
     }
 
     if (body?.historyEnabled !== undefined) {
@@ -45,10 +54,14 @@ export async function PATCH(req: NextRequest) {
     const user = await prisma.user.update({
       where: { id: userId },
       data,
-      select: { name: true, historyEnabled: true },
+      select: { name: true, bio: true, historyEnabled: true },
     })
 
-    return NextResponse.json({ name: user.name, historyEnabled: user.historyEnabled })
+    return NextResponse.json({
+      name: user.name,
+      bio: user.bio,
+      historyEnabled: user.historyEnabled,
+    })
   } catch (err) {
     console.error('Failed to update user:', err)
     return NextResponse.json({ error: 'Could not update your account.' }, { status: 500 })

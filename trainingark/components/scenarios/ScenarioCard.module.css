@@ -14,12 +14,16 @@
   display: flex;
   flex-direction: column;
   border-radius: 10px;
-  text-decoration: none;
   overflow: hidden;
   transition: transform 0.12s;
 }
 
 .card:hover { transform: translateY(-2px); }
+
+.scenarioLink {
+  color: inherit;
+  text-decoration: none;
+}
 
 .cardThumb {
   position: relative;
@@ -107,9 +111,15 @@
    span becomes a Link and nothing else has to change, because the author id
    is already carried in the data. */
 .cardAuthor {
+  display: block;
+  align-self: flex-start;
+  margin: 0 4px 4px;
   font-size: 0.66rem;
   color: rgba(232, 224, 212, 0.4);
+  text-decoration: none;
 }
+
+.cardAuthor:hover { color: #c9a84c; }
 
 /* Deleted-scenario tile. Same wording and muted treatment the history page
    uses for orphaned attempt rows. */
