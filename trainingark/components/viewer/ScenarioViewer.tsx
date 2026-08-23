@@ -6,6 +6,7 @@ import { Board } from '@/components/board/Board'
 import { TarkLogo } from '@/components/shell/TarkLogo'
 import { useAuth } from '@/lib/useAuth'
 import { ScenarioSaveControls } from '@/components/scenarios/ScenarioSaveControls'
+import { ScenarioReactions } from '@/components/scenarios/ScenarioReactions'
 import type { ViewerScenario, ViewerStep, ViewerDecisionChoice, DecisionResult } from './viewerTypes'
 import { QUALITY_POINTS } from './viewerTypes'
 import styles from './ScenarioViewer.module.css'
@@ -220,6 +221,7 @@ export function ScenarioViewer({ scenarioId }: { scenarioId: string }) {
           <p className={styles.introMeta}>
             {perfectCount} of {decisionCount} decisions perfect
           </p>
+          <ScenarioReactions scenarioId={scenarioId} />
 
           {results.length > 0 && (
             <div className={styles.debrief}>
@@ -265,6 +267,7 @@ export function ScenarioViewer({ scenarioId }: { scenarioId: string }) {
               {decisionCount > 0 && <> · Score {score}/{maxScore}</>}
               {best && <> · Best {best.score}/{best.maxScore}</>}
             </span>
+            <ScenarioReactions scenarioId={scenarioId} />
             <ScenarioSaveControls scenarioId={scenarioId} variant="header" />
           </div>
         </div>

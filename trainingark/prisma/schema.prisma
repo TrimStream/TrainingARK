@@ -22,6 +22,7 @@ model Scenario {
   attempts      Attempt[]
   bookmarks     Bookmark[]
   playlistItems PlaylistItem[]
+  reactions     ScenarioReaction[]
 
   // Nullable: scenarios created before auth existed have no author.
   authorId String?
@@ -35,6 +36,25 @@ enum ScenarioVisibility {
   DRAFT
   UNLISTED
   PUBLIC
+}
+
+enum ReactionType {
+  LIKE
+  DISLIKE
+}
+
+model ScenarioReaction {
+  id         String       @id @default(cuid())
+  userId     String
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scenarioId String
+  scenario   Scenario     @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+  type       ReactionType
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  @@unique([userId, scenarioId])
+  @@index([scenarioId, type])
 }
 
 model Event {
@@ -147,6 +167,7 @@ model User {
   attempts  Attempt[]
   bookmarks Bookmark[]
   playlists Playlist[]
+  reactions ScenarioReaction[]
 }
 
 model Account {

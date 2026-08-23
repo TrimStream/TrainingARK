@@ -1,0 +1,46 @@
+.reactions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.button {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  color: rgba(232, 224, 212, 0.65);
+  border-radius: 999px;
+  padding: 4px 9px;
+  font-size: 0.68rem;
+  cursor: pointer;
+  transition: border-color 0.12s, color 0.12s, background 0.12s;
+}
+
+.button:hover:not(:disabled) {
+  color: #e8e0d4;
+  border-color: rgba(201, 168, 76, 0.55);
+}
+
+.button:disabled { opacity: 0.55; cursor: wait; }
+
+.active {
+  color: #6ab06a;
+  border-color: rgba(106, 176, 106, 0.55);
+  background: rgba(106, 176, 106, 0.1);
+}
+
+.activeDislike {
+  color: #e07070;
+  border-color: rgba(224, 112, 112, 0.55);
+  background: rgba(224, 112, 112, 0.1);
+}
+
+.loading {
+  font-size: 0.64rem;
+  color: rgba(232, 224, 212, 0.35);
+}
+
+.error {
+  color: #e07070;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
