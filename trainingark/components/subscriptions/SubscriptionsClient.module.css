@@ -1,0 +1,10 @@
+.page { max-width: 1400px; padding: 28px 24px 56px; }
+.page header { margin-bottom: 24px; }
+.page h1 { margin: 0; color: #e8e0d4; font-size: 1.45rem; }
+.page header p { margin: 7px 0 0; color: rgba(232,224,212,.5); font-size: .8rem; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+.empty { padding: 32px 0; }
+.empty h2 { margin: 0 0 8px; color: #e8e0d4; font-size: 1rem; }
+.empty p, .error { color: rgba(232,224,212,.5); font-size: .8rem; }
+.empty a { color: #c9a84c; font-size: .8rem; }
+.error { color: #e07070; }

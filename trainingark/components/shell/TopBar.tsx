@@ -7,6 +7,7 @@ import { signOut } from 'next-auth/react'
 import { useAuth } from '@/lib/useAuth'
 import type { ScenarioCardData } from '@/components/scenarios/ScenarioCard'
 import { TarkLogo } from './TarkLogo'
+import { NotificationBell } from './NotificationBell'
 import styles from './TopBar.module.css'
 
 interface TopBarProps {
@@ -193,6 +194,8 @@ export function TopBar({ onToggleSidebar }: TopBarProps) {
 
       <div className={styles.right}>
         {user ? (
+          <>
+          <NotificationBell />
           <div className={styles.userMenuWrap} ref={menuRef}>
             <button
               className={styles.avatar}
@@ -233,6 +236,7 @@ export function TopBar({ onToggleSidebar }: TopBarProps) {
               </div>
             )}
           </div>
+          </>
         ) : (
           <Link href="/login" className={styles.signInPill}>
             Sign in

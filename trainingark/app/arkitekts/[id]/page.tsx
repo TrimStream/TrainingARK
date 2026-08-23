@@ -9,6 +9,7 @@ import {
 } from '@/lib/scenarioVisibility'
 import { AppShell } from '@/components/shell/AppShell'
 import { ScenarioCard } from '@/components/scenarios/ScenarioCard'
+import { FollowButton } from '@/components/arkitekts/FollowButton'
 import styles from './page.module.css'
 
 async function getArkitekt(id: string) {
@@ -72,6 +73,7 @@ export default async function ArkitektPage({
               {scenarios.length} public {scenarios.length === 1 ? 'scenario' : 'scenarios'}
             </p>
             {arkitekt.bio && <p className={styles.bio}>{arkitekt.bio}</p>}
+            <FollowButton arkitektId={arkitekt.id} />
           </div>
         </header>
 

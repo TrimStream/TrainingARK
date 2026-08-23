@@ -9,9 +9,13 @@ The goal is to provide cEDH with the kind of repeatable puzzle-based training th
 - Browse published scenarios by difficulty, commander, or author.
 - Recreate four-player board states with real Magic card images.
 - Build multi-step scenarios with prompts, choices, explanations, and scoring.
+- Recover in-progress builder drafts through server autosave and local fallback storage.
 - Play scenarios and review the result of every decision.
 - Track completed attempts, scores, and personal bests.
-- Create accounts and manage authored scenarios.
+- Create accounts, publish with draft/unlisted/public visibility, and manage authored scenarios.
+- Present public Arkitekt profiles and follow creators.
+- Like or dislike scenarios and discuss them through editable, reportable comments.
+- Browse a subscriptions feed and receive notifications for new followers and newly published scenarios.
 - Bookmark scenarios and organize them into playlists.
 - Search the shared scenario library.
 
@@ -105,6 +109,8 @@ types/               Shared TypeScript domain types
 - `/builder` — authenticated scenario builder
 - `/dashboard` — scenarios, bookmarks, and playlists
 - `/history` — completed training attempts
+- `/subscriptions` — public scenarios from followed Arkitekts
+- `/arkitekts/[id]` — an Arkitekt's public profile and scenarios
 - `/search` — scenario search
 - `/tutorial` — product walkthrough
 - `/rules` — cEDH rules reference
@@ -112,9 +118,11 @@ types/               Shared TypeScript domain types
 
 ## Data Model
 
-TrainingARK stores users, scenarios, scenario events, completed attempts, bookmarks, and playlists in PostgreSQL. Scenario board state and decision sequences are stored as structured JSON, while searchable metadata and user relationships remain relational.
+TrainingARK stores users, scenarios, scenario events, completed attempts, bookmarks, playlists, reactions, comments, reports, follows, and notifications in PostgreSQL. Scenario board state and decision sequences are stored as structured JSON, while searchable metadata and user relationships remain relational.
 
 Deleting a scenario does not erase another player's training history, bookmarks, or playlists. Those records retain a snapshot of the scenario title so the user's library remains understandable.
+
+Comment authors can edit or soft-delete their own comments. Scenario creators cannot remove comments from other users; potentially abusive content is reported separately for platform moderation.
 
 ## Vision
 

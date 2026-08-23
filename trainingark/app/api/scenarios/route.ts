@@ -8,6 +8,7 @@ import {
   visibleScenarioWhere,
   withScenarioAuthor,
 } from '@/lib/scenarioVisibility'
+import { isFirstPublication } from '@/lib/subscription'
 
 const MAX_PAYLOAD_BYTES = 8_000_000
 const MAX_COMMANDERS = 8
@@ -44,16 +45,37 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid visibility' }, { status: 400 })
     }
 
-    const scenario = await prisma.scenario.create({
-      data: {
-        title,
-        description: description ?? '',
-        difficulty: difficulty ?? 'beginner',
-        commanders: sanitizeCommanders(commanders),
-        visibility,
-        data,
-        authorId: userId,
-      },
+    const scenario = await prisma.$transaction(async tx => {
+      const created = await tx.scenario.create({
+        data: {
+          title,
+          description: description ?? '',
+          difficulty: difficulty ?? 'beginner',
+          commanders: sanitizeCommanders(commanders),
+          visibility,
+          publishedAt: visibility === 'PUBLIC' ? new Date() : null,
+          data,
+          authorId: userId,
+        },
+      })
+      if (isFirstPublication(null, visibility)) {
+        const followers = await tx.follow.findMany({
+          where: { followingId: userId },
+          select: { followerId: true },
+        })
+        if (followers.length > 0) {
+          await tx.notification.createMany({
+            data: followers.map(({ followerId }) => ({
+              userId: followerId,
+              actorId: userId,
+              type: 'SCENARIO_PUBLISHED' as const,
+              scenarioId: created.id,
+              scenarioTitle: created.title,
+            })),
+          })
+        }
+      }
+      return created
     })
 
     return NextResponse.json({ id: scenario.id, authorId: scenario.authorId }, { status: 201 })

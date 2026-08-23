@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
 import { canViewScenario, parseScenarioVisibility } from '@/lib/scenarioVisibility'
+import { isFirstPublication } from '@/lib/subscription'
 
 const MAX_PAYLOAD_BYTES = 8_000_000
 const MAX_COMMANDERS = 8
@@ -55,7 +56,7 @@ export async function PUT(
 
     const existing = await prisma.scenario.findUnique({
       where: { id },
-      select: { authorId: true },
+      select: { authorId: true, visibility: true, publishedAt: true },
     })
     if (!existing) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -79,16 +80,40 @@ export async function PUT(
       return NextResponse.json({ error: 'Invalid visibility' }, { status: 400 })
     }
 
-    const scenario = await prisma.scenario.update({
-      where: { id },
-      data: {
-        ...(title !== undefined && { title }),
-        ...(description !== undefined && { description }),
-        ...(difficulty !== undefined && { difficulty }),
-        ...(commanders !== undefined && { commanders: sanitizeCommanders(commanders) }),
-        ...(data !== undefined && { data }),
-        ...(visibility && { visibility }),
-      },
+    const nextVisibility = visibility ?? existing.visibility
+    const firstPublication = isFirstPublication(existing.publishedAt, nextVisibility)
+
+    const scenario = await prisma.$transaction(async tx => {
+      const updated = await tx.scenario.update({
+        where: { id },
+        data: {
+          ...(title !== undefined && { title }),
+          ...(description !== undefined && { description }),
+          ...(difficulty !== undefined && { difficulty }),
+          ...(commanders !== undefined && { commanders: sanitizeCommanders(commanders) }),
+          ...(data !== undefined && { data }),
+          ...(visibility && { visibility }),
+          ...(firstPublication && { publishedAt: new Date() }),
+        },
+      })
+      if (firstPublication) {
+        const followers = await tx.follow.findMany({
+          where: { followingId: userId },
+          select: { followerId: true },
+        })
+        if (followers.length > 0) {
+          await tx.notification.createMany({
+            data: followers.map(({ followerId }) => ({
+              userId: followerId,
+              actorId: userId,
+              type: 'SCENARIO_PUBLISHED' as const,
+              scenarioId: updated.id,
+              scenarioTitle: updated.title,
+            })),
+          })
+        }
+      }
+      return updated
     })
 
     return NextResponse.json({
