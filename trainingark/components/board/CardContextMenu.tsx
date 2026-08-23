@@ -22,7 +22,6 @@ interface CardContextMenuProps {
   y: number
   cardName: string
   cardType: Card['cardType']
-  isToken?: boolean
   isCommander?: boolean
   isTapped?: boolean
   isRevealed?: boolean
@@ -39,7 +38,7 @@ interface CardContextMenuProps {
 }
 
 export function CardContextMenu({
-  x, y, cardName, cardType, isToken, isCommander, isTapped, isRevealed,
+  x, y, cardName, cardType, isCommander, isTapped, isRevealed,
   onMove, onCastToStack, onToggleTapped, onToggleRevealed, onRemove, onCreateTokenCopy, onClose, currentZone,
 }: CardContextMenuProps) {
   const ref = useRef<HTMLDivElement>(null)

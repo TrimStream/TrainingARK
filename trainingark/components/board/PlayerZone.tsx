@@ -22,7 +22,6 @@ interface PlayerZoneProps {
 const CARD_BACK = '/back_magic.png'
 const CARD_W = 80
 const CARD_H = 112
-const HAND_OVERLAP = 36
 
 type ExpandableZone = 'hand' | 'graveyard' | 'exile' | 'library'
 
@@ -1088,56 +1087,60 @@ function CardAddSearch({ decklist, tokensOnly, onSelect, onClose }: {
   const [loading, setLoading] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  function filterByDecklist(): string[] {
-    if (decklist.length === 0) return []
-    const q = query.toLowerCase()
-    return decklist.filter(d => d.toLowerCase().includes(q)).slice(0, 8)
-  }
+  const displayedSuggestions = !tokensOnly && decklist.length > 0 && query.length > 0
+    ? decklist.filter(cardName => cardName.toLowerCase().includes(query.toLowerCase())).slice(0, 8)
+    : suggestions
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
-    if (query.length < 1) { setSuggestions([]); return }
+    if (query.length < 1 || (!tokensOnly && decklist.length > 0)) return
+
+    let cancelled = false
 
     if (tokensOnly) {
       debounceRef.current = setTimeout(async () => {
         setLoading(true)
         try {
           const res = await fetch(`https://api.scryfall.com/cards/search?q=${encodeURIComponent(`is:token ${query}`)}&unique=cards`)
+		  if (cancelled) return
           if (!res.ok) { setSuggestions([]); return }
           const data = await res.json()
+		  if (cancelled) return
           setSuggestions((data.data ?? []).slice(0, 8).map((c: { name: string }) => c.name))
           setActiveIndex(-1)
         } catch {
           setSuggestions([])
         } finally {
-          setLoading(false)
+		  if (!cancelled) setLoading(false)
         }
       }, 200)
-      return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
-    }
-
-    if (decklist.length > 0) {
-      setSuggestions(filterByDecklist())
-      setActiveIndex(-1)
-      return
+	  return () => {
+		cancelled = true
+		if (debounceRef.current) clearTimeout(debounceRef.current)
+	  }
     }
 
     debounceRef.current = setTimeout(async () => {
       setLoading(true)
       try {
         const res = await fetch(`https://api.scryfall.com/cards/autocomplete?q=${encodeURIComponent(query)}`)
-        if (!res.ok) return
+		if (cancelled) return
+		if (!res.ok) { setSuggestions([]); return }
         const data = await res.json()
+		if (cancelled) return
         setSuggestions((data.data ?? []).slice(0, 8))
         setActiveIndex(-1)
       } catch {
         setSuggestions([])
       } finally {
-        setLoading(false)
+		if (!cancelled) setLoading(false)
       }
     }, 180)
-    return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
-  }, [query, tokensOnly])
+    return () => {
+	  cancelled = true
+	  if (debounceRef.current) clearTimeout(debounceRef.current)
+	}
+  }, [query, tokensOnly, decklist.length])
 
   async function selectCard(name: string) {
     try {
@@ -1181,13 +1184,21 @@ function CardAddSearch({ decklist, tokensOnly, onSelect, onClose }: {
           className={styles.cardAddInput}
           placeholder={tokensOnly ? 'Search tokens...' : decklist.length > 0 ? 'Search decklist...' : 'Search all cards...'}
           value={query}
-          onChange={e => setQuery(e.target.value)}
+          onChange={e => {
+			const value = e.target.value
+			setQuery(value)
+			setActiveIndex(-1)
+			if (value.length < 1) {
+			  setSuggestions([])
+			  setLoading(false)
+			}
+		  }}
           onKeyDown={e => {
             if (e.key === 'Escape') { onClose(); return }
-            if (e.key === 'ArrowDown') { e.preventDefault(); setActiveIndex(i => Math.min(i + 1, suggestions.length - 1)) }
+			if (e.key === 'ArrowDown') { e.preventDefault(); setActiveIndex(i => Math.min(i + 1, displayedSuggestions.length - 1)) }
             if (e.key === 'ArrowUp') { e.preventDefault(); setActiveIndex(i => Math.max(i - 1, -1)) }
             if (e.key === 'Enter') {
-              const name = activeIndex >= 0 ? suggestions[activeIndex] : suggestions[0]
+			  const name = activeIndex >= 0 ? displayedSuggestions[activeIndex] : displayedSuggestions[0]
               if (name) void selectCard(name)
             }
           }}
@@ -1202,12 +1213,12 @@ function CardAddSearch({ decklist, tokensOnly, onSelect, onClose }: {
         </button>
       </div>
       {loading && <div className={styles.cardAddHint}>Searching...</div>}
-      {!loading && query.length >= 1 && suggestions.length === 0 && (
+	  {!loading && query.length >= 1 && displayedSuggestions.length === 0 && (
         <div className={styles.cardAddHint}>No results</div>
       )}
-      {suggestions.length > 0 && (
+	  {displayedSuggestions.length > 0 && (
         <ul className={styles.cardAddList}>
-          {suggestions.map((name, i) => (
+		  {displayedSuggestions.map((name, i) => (
             <li
               key={name}
               className={`${styles.cardAddItem} ${i === activeIndex ? styles.cardAddItemActive : ''}`}

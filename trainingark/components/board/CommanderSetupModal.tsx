@@ -75,25 +75,33 @@ export function CommanderSetupModal({ playerIndex, playerName, onConfirm }: Comm
 	// Search for commanders (legendary creatures)
 	useEffect(() => {
 	  if (debounceRef.current) clearTimeout(debounceRef.current)
-	  if (commanderQuery.length < 1) { setCommanderSuggestions([]); setActiveIndex(-1); return }
+	  if (commanderQuery.length < 1) return
+	  let cancelled = false
 	  debounceRef.current = setTimeout(async () => {
 	    try {
 	      const res = await fetch(
 	        `https://api.scryfall.com/cards/search?q=${encodeURIComponent(`is:commander ${commanderQuery}`)}&unique=names`
 	      )
+	      if (cancelled) return
 	      if (!res.ok) { setCommanderSuggestions([]); return }
 	      const data = await res.json()
+	      if (cancelled) return
 	      setCommanderSuggestions((data.data ?? []).slice(0, 8).map((c: { name: string }) => c.name))
 	      setActiveIndex(-1)
 	    } catch { /* ignore */ }
 	  }, 200)
+	  return () => {
+	    cancelled = true
+	    if (debounceRef.current) clearTimeout(debounceRef.current)
+	  }
 	}, [commanderQuery])
 
 	// Search for second commander based on partner type
 	useEffect(() => {
 		if (!commander1 || commander1.partnerType === 'none' || commander1.partnerType === 'partner-with') return
 		if (debounce2Ref.current) clearTimeout(debounce2Ref.current)
-		if (partner2Query.length < 2) { setPartner2Suggestions([]); setPartner2ActiveIndex(-1); return }
+		if (partner2Query.length < 2) return
+		let cancelled = false
 		debounce2Ref.current = setTimeout(async () => {
 			try {
 				let query = ''
@@ -101,19 +109,39 @@ export function CommanderSetupModal({ playerIndex, playerName, onConfirm }: Comm
 				if (commander1.partnerType === 'friends-forever') query = `is:commander o:"friends forever" ${partner2Query}`
 				if (commander1.partnerType === 'choose-background') query = `t:background ${partner2Query}`
 				const res = await fetch(`https://api.scryfall.com/cards/search?q=${encodeURIComponent(query)}&unique=names`)
+				if (cancelled) return
 				if (!res.ok) { setPartner2Suggestions([]); return }
 				const data = await res.json()
+				if (cancelled) return
 				setPartner2Suggestions((data.data ?? []).slice(0, 8).map((c: { name: string }) => c.name))
 				setPartner2ActiveIndex(-1)
 			} catch { /* ignore */ }
 		}, 200)
+		return () => {
+			cancelled = true
+			if (debounce2Ref.current) clearTimeout(debounce2Ref.current)
+		}
 	}, [partner2Query, commander1])
+
+	function handleCommanderQueryChange(value: string) {
+		setCommanderQuery(value)
+		setActiveIndex(-1)
+		if (value.length < 1) setCommanderSuggestions([])
+	}
+
+	function handlePartner2QueryChange(value: string) {
+		setPartner2Query(value)
+		setPartner2ActiveIndex(-1)
+		if (value.length < 2) setPartner2Suggestions([])
+	}
 
 	async function selectCommander1(name: string) {
 		setCommanderQuery('')
 		setCommanderSuggestions([])
 		setCommander2(null)
 		setPartner2Query('')
+		setPartner2Suggestions([])
+		setPartner2ActiveIndex(-1)
 		setLoadingCommander(true)
 		const info = await fetchCommanderInfo(name)
 		setCommander1(info)
@@ -229,7 +257,7 @@ export function CommanderSetupModal({ playerIndex, playerName, onConfirm }: Comm
 								className={styles.input}
 								placeholder="Search for a legendary creature..."
 								value={commanderQuery}
-								onChange={e => setCommanderQuery(e.target.value)}
+								onChange={e => handleCommanderQueryChange(e.target.value)}
 								onKeyDown={e => {
 									if (commanderSuggestions.length === 0) return
 									if (e.key === 'ArrowDown') { e.preventDefault(); setActiveIndex(i => Math.min(i + 1, commanderSuggestions.length - 1)) }
@@ -286,7 +314,7 @@ export function CommanderSetupModal({ playerIndex, playerName, onConfirm }: Comm
 									className={styles.input}
 									placeholder={`Search for a ${commander1.partnerType === 'choose-background' ? 'background' : 'partner'}...`}
 									value={partner2Query}
-									onChange={e => setPartner2Query(e.target.value)}
+									onChange={e => handlePartner2QueryChange(e.target.value)}
 									onKeyDown={e => {
 										if (partner2Suggestions.length === 0) return
 										if (e.key === 'ArrowDown') { e.preventDefault(); setPartner2ActiveIndex(i => Math.min(i + 1, partner2Suggestions.length - 1)) }

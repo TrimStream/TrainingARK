@@ -782,7 +782,7 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
     const card = player.zones[fromZone].cards.find((c: Card) => c.id === cardId)
     if (!card) return
 
-    let updated = [...state.players] as [Player, Player, Player, Player]
+    const updated = [...state.players] as [Player, Player, Player, Player]
 
     if (type === 'cast') {
       const fromCardsArr = [...player.zones[fromZone].cards]

@@ -88,7 +88,6 @@ export function BoardCard({
       y={contextMenu.y}
       cardName={card.name}
       cardType={card.cardType}
-      isToken={card.isToken}
       isCommander={card.isCommander}
       isTapped={card.tapped}
       isRevealed={card.revealed}

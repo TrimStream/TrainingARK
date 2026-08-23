@@ -184,7 +184,9 @@ export function BuilderHeader({ initialScenarioId }: { initialScenarioId?: strin
 
   // Always call the latest closure from timers and the retry path.
   const saveRef = useRef(performSave)
-  saveRef.current = performSave
+  useEffect(() => {
+    saveRef.current = performSave
+  })
 
   // Debounced autosave. Starts only once the same gate that enables the
   // manual save button is met.
