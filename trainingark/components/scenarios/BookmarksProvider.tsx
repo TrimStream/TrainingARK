@@ -1,7 +1,11 @@
 'use client'
 
-import { createContext, useCallback, useContext, useEffect, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useReducer, useRef } from 'react'
 import { useSession } from 'next-auth/react'
+import {
+  EMPTY_BOOKMARK_STATE,
+  reduceBookmarkState,
+} from '@/lib/bookmarkState'
 
 /**
  * App-wide bookmark state. Mounted in components/auth/Providers.tsx, which
@@ -20,41 +24,45 @@ interface BookmarksValue {
 const BookmarksContext = createContext<BookmarksValue | null>(null)
 
 export function BookmarksProvider({ children }: { children: React.ReactNode }) {
-  const { status } = useSession()
-  const [ids, setIds] = useState<Set<string>>(new Set())
-  const [ready, setReady] = useState(false)
+  const { data: session, status } = useSession()
+  const userId = status === 'authenticated' ? session?.user?.id ?? null : null
+  const [state, dispatch] = useReducer(reduceBookmarkState, EMPTY_BOOKMARK_STATE)
+  const busyIds = useRef(new Set<string>())
 
   useEffect(() => {
-    if (status !== 'authenticated') return
+    dispatch({ type: 'session', ownerId: userId })
+    busyIds.current.clear()
+    if (!userId) return
 
-    let cancelled = false
-    fetch('/api/bookmarks?ids=1')
+    const controller = new AbortController()
+    fetch('/api/bookmarks?ids=1', { signal: controller.signal })
       .then(res => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         return res.json()
       })
       .then((list: string[]) => {
-        if (cancelled) return
-        setIds(new Set(list))
-        setReady(true)
+        dispatch({ type: 'loaded', ownerId: userId, ids: list })
       })
-      .catch(err => console.error('Could not load your bookmarks:', err))
+      .catch(err => {
+        if (err instanceof DOMException && err.name === 'AbortError') return
+        console.error('Could not load your bookmarks:', err)
+      })
 
-    return () => { cancelled = true }
-  }, [status])
+    return () => controller.abort()
+  }, [userId])
 
-  const isBookmarked = useCallback((scenarioId: string) => ids.has(scenarioId), [ids])
+  const isBookmarked = useCallback(
+    (scenarioId: string) => state.ids.has(scenarioId),
+    [state.ids]
+  )
 
   const toggle = useCallback(async (scenarioId: string) => {
-    const wasBookmarked = ids.has(scenarioId)
+    if (!userId || busyIds.current.has(scenarioId)) return
+    busyIds.current.add(scenarioId)
+    const wasBookmarked = state.ids.has(scenarioId)
 
     // Optimistic: the icon flips immediately and is rolled back on failure.
-    setIds(prev => {
-      const next = new Set(prev)
-      if (wasBookmarked) next.delete(scenarioId)
-      else next.add(scenarioId)
-      return next
-    })
+    dispatch({ type: 'toggle', scenarioId, bookmarked: !wasBookmarked })
 
     try {
       const res = wasBookmarked
@@ -67,17 +75,14 @@ export function BookmarksProvider({ children }: { children: React.ReactNode }) {
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
     } catch (err) {
       console.error('Could not update that bookmark:', err)
-      setIds(prev => {
-        const next = new Set(prev)
-        if (wasBookmarked) next.add(scenarioId)
-        else next.delete(scenarioId)
-        return next
-      })
+      dispatch({ type: 'toggle', scenarioId, bookmarked: wasBookmarked })
+    } finally {
+      busyIds.current.delete(scenarioId)
     }
-  }, [ids])
+  }, [state.ids, userId])
 
   return (
-    <BookmarksContext.Provider value={{ ready, isBookmarked, toggle }}>
+    <BookmarksContext.Provider value={{ ready: state.ready, isBookmarked, toggle }}>
       {children}
     </BookmarksContext.Provider>
   )
