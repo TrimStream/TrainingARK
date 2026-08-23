@@ -7,6 +7,13 @@ import Link from 'next/link'
 import { useBuilderStore } from '@/store/builderStore'
 import { TarkLogo } from '@/components/shell/TarkLogo'
 import { useAuth } from '@/lib/useAuth'
+import {
+  builderDraftStorageKey,
+  isMeaningfulBuilderDraft,
+  parseBuilderDraft,
+  pendingDraftExitRequest,
+  serializeBuilderDraft,
+} from '@/lib/builderDraft'
 import styles from './BuilderHeader.module.css'
 
 const DIFFICULTY_LABELS = {
@@ -32,6 +39,14 @@ interface ScenarioListItem {
 }
 
 type ScenarioVisibility = 'DRAFT' | 'UNLISTED' | 'PUBLIC'
+
+function removeLocalRecoveryDraft(userId: string) {
+  try {
+    localStorage.removeItem(builderDraftStorageKey(userId))
+  } catch (err) {
+    console.error('Could not clear local draft recovery copy:', err)
+  }
+}
 
 export function BuilderHeader({ initialScenarioId }: { initialScenarioId?: string } = {}) {
   const {
@@ -72,7 +87,9 @@ export function BuilderHeader({ initialScenarioId }: { initialScenarioId?: strin
   const mountedRef = useRef(false)
   const skipNextAutosaveRef = useRef(false)
   const lastSavedBodyRef = useRef<string | null>(null)
+  const latestBodyRef = useRef('')
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const recoveryCheckedRef = useRef(false)
 
   function commitTitle() {
     if (titleInput.trim()) setScenarioTitle(titleInput.trim())
@@ -90,7 +107,13 @@ export function BuilderHeader({ initialScenarioId }: { initialScenarioId?: strin
     : []
 
   const canPreview = !!savedScenarioId && steps.length > 0
-  const canSave = setupComplete.some(Boolean)
+  const canSave = isMeaningfulBuilderDraft({
+    title: scenarioTitle,
+    description: scenarioDescription,
+    setupComplete,
+    stepCount: steps.length,
+    scenarioStarted,
+  })
   const isOwner = !!savedScenarioId && !!user && scenarioAuthorId === user.id
 
   function buildPayload() {
@@ -119,6 +142,8 @@ export function BuilderHeader({ initialScenarioId }: { initialScenarioId?: strin
     }
   }
 
+  const currentBody = JSON.stringify(buildPayload())
+
   function flashSaved() {
     setSaveState('saved')
     if (savedTimerRef.current) clearTimeout(savedTimerRef.current)
@@ -135,6 +160,7 @@ export function BuilderHeader({ initialScenarioId }: { initialScenarioId?: strin
     }
 
     const body = JSON.stringify(buildPayload())
+    latestBodyRef.current = body
 
     // Autosave skips no-op writes (e.g. right after a manual save).
     if (silent && body === lastSavedBodyRef.current) return
@@ -161,13 +187,18 @@ export function BuilderHeader({ initialScenarioId }: { initialScenarioId?: strin
       const result = await res.json()
 
       if (result.id) {
+        const isFirstSave = scenarioIdRef.current === null
         scenarioIdRef.current = result.id
         setSavedScenarioId(result.id)
+        if (isFirstSave) {
+          window.history.replaceState(null, '', `/builder?id=${encodeURIComponent(result.id)}`)
+        }
       }
       if (result.authorId !== undefined) setScenarioAuthorId(result.authorId)
       if (result.visibility) setVisibility(result.visibility)
 
       lastSavedBodyRef.current = body
+      removeLocalRecoveryDraft(user.id)
       flashSaved()
     } catch (err) {
       console.error('Save failed:', err)
@@ -188,8 +219,8 @@ export function BuilderHeader({ initialScenarioId }: { initialScenarioId?: strin
     saveRef.current = performSave
   })
 
-  // Debounced autosave. Starts only once the same gate that enables the
-  // manual save button is met.
+  // Debounced autosave starts as soon as the draft contains intentional work;
+  // an untouched blank builder does not create database clutter.
   useEffect(() => {
     if (!mountedRef.current) {
       mountedRef.current = true
@@ -197,19 +228,79 @@ export function BuilderHeader({ initialScenarioId }: { initialScenarioId?: strin
     }
     if (skipNextAutosaveRef.current) {
       skipNextAutosaveRef.current = false
+      lastSavedBodyRef.current = currentBody
       return
     }
     if (!canSave) return
 
     const timer = setTimeout(() => { void saveRef.current({ silent: true }) }, AUTOSAVE_DELAY_MS)
     return () => clearTimeout(timer)
-  }, [
-    canSave,
-    players, stack, steps, logLines, decklists,
-    scenarioTitle, scenarioDescription, difficulty,
-    firstPlayerIndex, currentTurnPlayerIndex, turnNumber, handSizes,
-    setupComplete, scenarioStarted, lastSavedLogIndex,
-  ])
+  }, [canSave, currentBody])
+
+  // Recover work that never reached its first server save. Server-backed
+  // scenarios always load by id and therefore take precedence.
+  useEffect(() => {
+    if (!user || initialScenarioId || recoveryCheckedRef.current) return
+    recoveryCheckedRef.current = true
+    const key = builderDraftStorageKey(user.id)
+    let raw: string | null
+    try {
+      raw = localStorage.getItem(key)
+    } catch (err) {
+      console.error('Could not read local draft recovery copy:', err)
+      return
+    }
+    if (!raw) return
+
+    const recovered = parseBuilderDraft(raw, user.id)
+    if (!recovered) {
+      removeLocalRecoveryDraft(user.id)
+      return
+    }
+
+    const payload = JSON.parse(recovered.body)
+    if (window.confirm('Recover your unsaved builder draft from this browser?')) {
+      loadScenario(payload)
+    } else {
+      removeLocalRecoveryDraft(user.id)
+    }
+  }, [initialScenarioId, loadScenario, user])
+
+  // Keep a per-account recovery copy until a brand-new draft receives its
+  // server id. This covers refreshes and crashes during the first debounce.
+  useEffect(() => {
+    latestBodyRef.current = currentBody
+    if (!user || scenarioIdRef.current) return
+
+    const key = builderDraftStorageKey(user.id)
+    if (!canSave) {
+      removeLocalRecoveryDraft(user.id)
+      return
+    }
+
+    try {
+      localStorage.setItem(key, serializeBuilderDraft(user.id, currentBody))
+    } catch (err) {
+      console.error('Could not store local draft recovery copy:', err)
+    }
+  }, [user, canSave, currentBody])
+
+  // A final keepalive PUT closes the debounce gap for drafts that already have
+  // a server id. The normal autosave remains the primary path.
+  useEffect(() => {
+    function flushPendingSave() {
+      const request = pendingDraftExitRequest(
+        scenarioIdRef.current,
+        latestBodyRef.current,
+        lastSavedBodyRef.current
+      )
+      if (!request) return
+      void fetch(request.url, request.init).catch(() => undefined)
+    }
+
+    window.addEventListener('pagehide', flushPendingSave)
+    return () => window.removeEventListener('pagehide', flushPendingSave)
+  }, [])
 
   useEffect(() => () => {
     if (savedTimerRef.current) clearTimeout(savedTimerRef.current)
@@ -255,6 +346,7 @@ export function BuilderHeader({ initialScenarioId }: { initialScenarioId?: strin
       skipNextAutosaveRef.current = true
       scenarioIdRef.current = null
       lastSavedBodyRef.current = null
+      if (user) removeLocalRecoveryDraft(user.id)
       setSavedScenarioId(null)
       setScenarioAuthorId(null)
       setVisibility('DRAFT')
@@ -296,7 +388,7 @@ export function BuilderHeader({ initialScenarioId }: { initialScenarioId?: strin
   }
 
   async function handleLoadScenario(id: string) {
-    if (loadingScenario) return
+    if (loadingScenario || savingRef.current) return
     setLoadingScenario(true)
     try {
       const res = await fetch(`/api/scenarios/${id}`)
@@ -320,6 +412,7 @@ export function BuilderHeader({ initialScenarioId }: { initialScenarioId?: strin
       setSaveState('idle')
       setSaveError(null)
       setShowLoad(false)
+      window.history.replaceState(null, '', `/builder?id=${encodeURIComponent(scenario.id)}`)
     } catch (err) {
       console.error('Failed to load scenario:', err)
     } finally {
@@ -412,7 +505,9 @@ export function BuilderHeader({ initialScenarioId }: { initialScenarioId?: strin
           className={styles.saveScenarioBtn}
           onClick={() => { void performSave({ silent: false }) }}
           disabled={saveState === 'saving' || !canSave}
-          title={!canSave ? 'Set up at least one player first' : 'Save scenario to database'}
+          title={!canSave
+            ? 'Add a title, description, player setup, or scenario step first'
+            : 'Save scenario to database'}
         >
           {savedScenarioId ? 'Update scenario' : 'Save scenario'}
         </button>
@@ -494,7 +589,7 @@ export function BuilderHeader({ initialScenarioId }: { initialScenarioId?: strin
             </div>
 
             <p className={styles.loadWarning}>
-              Loading replaces everything currently in the builder. Save first if you want to keep your work.
+              Loading replaces the current builder. Autosave protects your work; wait for Saving to finish first.
             </p>
 
             {loadingList ? (
@@ -508,7 +603,7 @@ export function BuilderHeader({ initialScenarioId }: { initialScenarioId?: strin
                     key={s.id}
                     className={styles.loadRow}
                     onClick={() => handleLoadScenario(s.id)}
-                    disabled={loadingScenario}
+                    disabled={loadingScenario || saveState === 'saving'}
                   >
                     <span className={styles.loadRowTitle}>{s.title}</span>
                     <span className={styles.loadRowMeta}>
