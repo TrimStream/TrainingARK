@@ -23,6 +23,7 @@ model Scenario {
   bookmarks     Bookmark[]
   playlistItems PlaylistItem[]
   reactions     ScenarioReaction[]
+  comments      ScenarioComment[]
 
   // Nullable: scenarios created before auth existed have no author.
   authorId String?
@@ -55,6 +56,58 @@ model ScenarioReaction {
 
   @@unique([userId, scenarioId])
   @@index([scenarioId, type])
+}
+
+enum CommentStatus {
+  ACTIVE
+  DELETED
+  REMOVED
+}
+
+model ScenarioComment {
+  id         String          @id @default(cuid())
+  scenarioId String
+  scenario   Scenario        @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  body       String
+  status     CommentStatus   @default(ACTIVE)
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+  reports    CommentReport[]
+
+  @@index([scenarioId, createdAt])
+  @@index([userId])
+}
+
+enum CommentReportReason {
+  SPAM
+  HARASSMENT
+  HATE
+  OTHER
+}
+
+enum CommentReportStatus {
+  PENDING
+  RESOLVED
+  DISMISSED
+}
+
+model CommentReport {
+  id         String              @id @default(cuid())
+  commentId  String
+  comment    ScenarioComment     @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  reporterId String
+  reporter   User                @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+  reason     CommentReportReason
+  details    String?
+  status     CommentReportStatus @default(PENDING)
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
+
+  @@unique([commentId, reporterId])
+  @@index([status, createdAt])
+  @@index([reporterId])
 }
 
 model Event {
@@ -161,13 +214,15 @@ model User {
   // visible, matching how "pause watch history" behaves.
   historyEnabled Boolean @default(true)
 
-  accounts  Account[]
-  sessions  Session[]
-  scenarios Scenario[]
-  attempts  Attempt[]
-  bookmarks Bookmark[]
-  playlists Playlist[]
-  reactions ScenarioReaction[]
+  accounts       Account[]
+  sessions       Session[]
+  scenarios      Scenario[]
+  attempts       Attempt[]
+  bookmarks      Bookmark[]
+  playlists      Playlist[]
+  reactions      ScenarioReaction[]
+  comments       ScenarioComment[]
+  commentReports CommentReport[]
 }
 
 model Account {

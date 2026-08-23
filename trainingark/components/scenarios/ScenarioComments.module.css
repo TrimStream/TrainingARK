@@ -1,0 +1,28 @@
+.trigger { border: 1px solid rgba(255,255,255,.1); background: rgba(255,255,255,.03); color: rgba(232,224,212,.72); border-radius: 999px; padding: 5px 10px; font-size: .68rem; cursor: pointer; }
+.trigger:hover { color: #e8e0d4; border-color: rgba(201,168,76,.55); }
+.trigger span { color: #c9a84c; margin-left: 3px; }
+.backdrop { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; padding: 18px; background: rgba(5,5,8,.78); backdrop-filter: blur(5px); }
+.dialog { width: min(640px, 100%); max-height: min(760px, 92vh); display: flex; flex-direction: column; overflow: hidden; border: 1px solid rgba(201,168,76,.25); border-radius: 14px; background: #151419; color: #e8e0d4; box-shadow: 0 24px 80px rgba(0,0,0,.5); }
+.header { display: flex; justify-content: space-between; gap: 16px; padding: 20px; border-bottom: 1px solid rgba(255,255,255,.08); }
+.header h2 { margin: 0; font-size: 1.05rem; }
+.header p { margin: 5px 0 0; color: rgba(232,224,212,.5); font-size: .78rem; }
+.close { align-self: start; border: 0; background: transparent; color: rgba(232,224,212,.6); font-size: 1.6rem; line-height: 1; cursor: pointer; }
+.list { min-height: 180px; overflow-y: auto; padding: 4px 20px; }
+.comment { padding: 15px 0; border-bottom: 1px solid rgba(255,255,255,.07); }
+.commentHeader { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: .75rem; }
+.commentHeader a { color: #c9a84c; text-decoration: none; font-weight: 600; }
+.commentHeader time { color: rgba(232,224,212,.35); }
+.body { margin: 8px 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: .88rem; line-height: 1.5; }
+.deleted, .muted { color: rgba(232,224,212,.4); font-style: italic; font-size: .82rem; }
+.actions { display: flex; gap: 10px; }
+.actions button { padding: 0; border: 0; background: transparent; color: rgba(232,224,212,.45); font-size: .7rem; cursor: pointer; }
+.actions button:hover { color: #c9a84c; }
+.actions button:disabled { cursor: wait; opacity: .5; }
+.editBox textarea, .composer textarea { box-sizing: border-box; width: 100%; min-height: 72px; resize: vertical; border: 1px solid rgba(255,255,255,.12); border-radius: 8px; padding: 10px; background: rgba(0,0,0,.25); color: #e8e0d4; font: inherit; }
+.composer { padding: 16px 20px 20px; border-top: 1px solid rgba(255,255,255,.08); }
+.composer form { display: grid; gap: 10px; }
+.composer form > button { justify-self: end; border: 1px solid rgba(201,168,76,.6); border-radius: 7px; padding: 8px 14px; background: rgba(201,168,76,.15); color: #e8e0d4; cursor: pointer; }
+.composer form > button:disabled { opacity: .45; cursor: not-allowed; }
+.composer p { margin: 0; font-size: .8rem; color: rgba(232,224,212,.55); }
+.composer a { color: #c9a84c; }
+.error { margin-top: 8px !important; color: #e07070 !important; }
